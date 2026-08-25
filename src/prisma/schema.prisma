@@ -1,8 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
   provider = "prisma-client"
   output   = "../generated/prisma"
@@ -10,4 +5,237 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+}
+
+enum StatusUsuario {
+  ATIVO
+  INATIVO
+  BLOQUEADO
+}
+
+enum TipoApoio {
+  ONG
+  CLINICA
+  TRANSPORTE
+  CASA_APOIO
+}
+
+enum StatusArtigo {
+  RASCUNHO
+  PUBLICADO
+  DESATIVADO
+}
+
+model Usuario {
+  id              String         @id @default(uuid()) @db.Uuid
+  nome            String
+  email           String         @unique
+  login           String         @unique
+  senhaHash       String         @map("senha_hash")
+  telefone        String
+  dataNascimento  DateTime       @map("data_nascimento") @db.Date
+  status          StatusUsuario
+  dataCriacao     DateTime       @default(now()) @map("data_criacao")
+  dataAtualizacao DateTime       @updatedAt @map("data_atualizacao")
+  ultimoAcesso    DateTime?      @map("ultimo_acesso")
+  paciente        Paciente?
+  administrador   Administrador?
+
+  @@map("usuario")
+}
+
+model Paciente {
+  usuarioId        String           @id @map("usuario_id") @db.Uuid
+  enderecoId       String           @map("endereco_id") @db.Uuid
+  usuario          Usuario          @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  endereco         Endereco         @relation(fields: [enderecoId], references: [id])
+  registrosDiarios RegistroDiario[]
+  consultas        Consulta[]
+
+  @@index([enderecoId])
+  @@map("paciente")
+}
+
+model Administrador {
+  usuarioId String                @id @map("usuario_id") @db.Uuid
+  usuario   Usuario               @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  perfis    AdministradorPerfil[]
+  artigos   Artigo[]
+
+  @@map("administrador")
+}
+
+model PerfilAdministrativo {
+  id              String                @id @default(uuid()) @db.Uuid
+  nome            String                @unique
+  descricao       String
+  administradores AdministradorPerfil[]
+
+  @@map("perfil_administrativo")
+}
+
+model AdministradorPerfil {
+  administradorId String               @map("administrador_id") @db.Uuid
+  perfilId        String               @map("perfil_id") @db.Uuid
+  administrador   Administrador        @relation(fields: [administradorId], references: [usuarioId], onDelete: Cascade)
+  perfil          PerfilAdministrativo @relation(fields: [perfilId], references: [id], onDelete: Cascade)
+
+  @@id([administradorId, perfilId])
+  @@index([perfilId])
+  @@map("administrador_perfil")
+}
+
+model Endereco {
+  id                 String                               @id @default(uuid()) @db.Uuid
+  cep                String
+  logradouro         String
+  numero             String
+  complemento        String?
+  bairro             String
+  cidade             String
+  estado             String
+  localizacaoPostgis Unsupported("geometry(Point, 4326)") @map("localizacao_postgis")
+  pacientes          Paciente[]
+  apoios             Apoio[]
+
+  @@map("endereco")
+}
+
+model RegistroDiario {
+  id         String            @id @default(uuid()) @db.Uuid
+  pacienteId String            @map("paciente_id") @db.Uuid
+  dataHora   DateTime          @default(now()) @map("data_hora")
+  humor      String
+  notaVozUrl String?           @map("nota_voz_url")
+  paciente   Paciente          @relation(fields: [pacienteId], references: [usuarioId], onDelete: Cascade)
+  sintomas   RegistroSintoma[]
+
+  @@index([pacienteId])
+  @@map("registro_diario")
+}
+
+model RegistroSintoma {
+  id               String         @id @default(uuid()) @db.Uuid
+  registroDiarioId String         @map("registro_diario_id") @db.Uuid
+  sintomaTipo      String         @map("sintoma_tipo")
+  intensidade      Int
+  registroDiario   RegistroDiario @relation(fields: [registroDiarioId], references: [id], onDelete: Cascade)
+
+  @@index([registroDiarioId])
+  @@map("registro_sintoma")
+}
+
+model Consulta {
+  id              String   @id @default(uuid()) @db.Uuid
+  pacienteId      String   @map("paciente_id") @db.Uuid
+  medicoNome      String   @map("medico_nome")
+  dataHora        DateTime @map("data_hora")
+  statusConsulta  String   @map("status_consulta")
+  observacao      String?
+  dataCriacao     DateTime @default(now()) @map("data_criacao")
+  dataAtualizacao DateTime @updatedAt @map("data_atualizacao")
+  paciente        Paciente @relation(fields: [pacienteId], references: [usuarioId], onDelete: Cascade)
+
+  @@index([pacienteId])
+  @@map("consulta")
+}
+
+model Apoio {
+  id                    String                 @id @default(uuid()) @db.Uuid
+  enderecoId            String                 @map("endereco_id") @db.Uuid
+  nome                  String
+  tipoApoio             TipoApoio              @map("tipo_apoio")
+  telefone              String
+  descricao             String                 @db.Text
+  statusAdministrativo  String                 @map("status_administrativo")
+  dataCriacao           DateTime               @default(now()) @map("data_criacao")
+  dataAtualizacao       DateTime               @updatedAt @map("data_atualizacao")
+  endereco              Endereco               @relation(fields: [enderecoId], references: [id])
+  horariosFuncionamento HorarioFuncionamento[]
+  imagens               ApoioImagem[]
+
+  @@index([enderecoId])
+  @@map("apoio")
+}
+
+model HorarioFuncionamento {
+  id            String   @id @default(uuid()) @db.Uuid
+  apoioId       String   @map("apoio_id") @db.Uuid
+  diaSemana     Int      @map("dia_semana")
+  horarioInicio DateTime @map("horario_inicio") @db.Time(0)
+  horarioFim    DateTime @map("horario_fim") @db.Time(0)
+  apoio         Apoio    @relation(fields: [apoioId], references: [id], onDelete: Cascade)
+
+  @@unique([apoioId, diaSemana, horarioInicio, horarioFim])
+  @@index([apoioId])
+  @@map("horario_funcionamento")
+}
+
+model ApoioImagem {
+  id        String @id @default(uuid()) @db.Uuid
+  apoioId   String @map("apoio_id") @db.Uuid
+  imagemUrl String @map("imagem_url")
+  ordem     Int
+  apoio     Apoio  @relation(fields: [apoioId], references: [id], onDelete: Cascade)
+
+  @@unique([apoioId, ordem])
+  @@index([apoioId])
+  @@map("apoio_imagem")
+}
+
+model Artigo {
+  id                  String            @id @default(uuid()) @db.Uuid
+  autorId             String            @map("autor_id") @db.Uuid
+  titulo              String
+  conteudo            String            @db.Text
+  tempoLeituraMinutos Int               @map("tempo_leitura_minutos")
+  imagemUrl           String?           @map("imagem_url")
+  status              StatusArtigo
+  dataCriacao         DateTime          @default(now()) @map("data_criacao")
+  dataAtualizacao     DateTime          @updatedAt @map("data_atualizacao")
+  dataPublicacao      DateTime?         @map("data_publicacao")
+  autor               Administrador     @relation(fields: [autorId], references: [usuarioId])
+  categorias          ArtigoCategoria[]
+  tags                ArtigoTag[]
+
+  @@index([autorId])
+  @@map("artigo")
+}
+
+model Categoria {
+  id      String            @id @default(uuid()) @db.Uuid
+  nome    String            @unique
+  artigos ArtigoCategoria[]
+
+  @@map("categoria")
+}
+
+model ArtigoCategoria {
+  artigoId    String    @map("artigo_id") @db.Uuid
+  categoriaId String    @map("categoria_id") @db.Uuid
+  artigo      Artigo    @relation(fields: [artigoId], references: [id], onDelete: Cascade)
+  categoria   Categoria @relation(fields: [categoriaId], references: [id], onDelete: Cascade)
+
+  @@id([artigoId, categoriaId])
+  @@index([categoriaId])
+  @@map("artigo_categoria")
+}
+
+model Tag {
+  id      String      @id @default(uuid()) @db.Uuid
+  nome    String      @unique
+  artigos ArtigoTag[]
+
+  @@map("tag")
+}
+
+model ArtigoTag {
+  artigoId String @map("artigo_id") @db.Uuid
+  tagId    String @map("tag_id") @db.Uuid
+  artigo   Artigo @relation(fields: [artigoId], references: [id], onDelete: Cascade)
+  tag      Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([artigoId, tagId])
+  @@index([tagId])
+  @@map("artigo_tag")
 }
