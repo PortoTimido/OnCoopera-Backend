@@ -25,7 +25,9 @@ O módulo deve representar:
 - dados de identificação pessoal;
 - credenciais;
 - nível de acesso administrativo;
-- operações mínimas de autenticação e alteração de senha.
+- operações mínimas de autenticação e alteração de senha;
+- CRUD de usuários administrativos pelo backoffice;
+- cadastro e autogestão de paciente pelo aplicativo mobile.
 
 O módulo não define, por si só, permissões de acesso a outras funcionalidades do sistema.
 
@@ -41,7 +43,7 @@ Usuário associado ao acompanhamento de saúde, registros diários, consultas, m
 
 ### Administrador
 
-Usuário com nível de acesso administrativo para operação do backoffice.
+Usuário com perfis administrativos para operação do backoffice.
 
 ## 5. Requisitos funcionais
 
@@ -95,7 +97,7 @@ O paciente deve poder:
 
 ### REQ-UA-006 — Representação de administrador
 
-O sistema deve representar administrador como especialização de usuário, contendo nível de acesso.
+O sistema deve representar administrador como especialização de usuário, contendo perfis administrativos.
 
 ### REQ-UA-007 — Níveis de acesso administrativo
 
@@ -121,6 +123,58 @@ O domínio não deve conhecer JWT, cookies, sessão HTTP, headers ou detalhes do
 ### REQ-UA-010 — Registro de último acesso
 
 Quando uma autenticação for concluída com sucesso, o sistema deve poder atualizar a data do último acesso do usuário.
+
+### REQ-UA-011 — Renovação de sessão
+
+O sistema deve permitir renovar a autenticação por meio de refresh token válido e proteção CSRF.
+
+Refresh token inválido, expirado ou revogado não deve gerar novo access token.
+
+### REQ-UA-012 — Logout
+
+O sistema deve permitir encerrar a sessão autenticada.
+
+Logout deve revogar a sessão quando o refresh token informado corresponder a uma sessão existente.
+
+### REQ-UA-013 — Usuário autenticado
+
+O sistema deve permitir consultar a identidade sanitizada do usuário autenticado.
+
+Essa resposta não deve incluir senha, hash de senha, refresh token ou segredos internos.
+
+### REQ-UA-014 — Status do usuário
+
+Apenas usuários com status `ATIVO` devem autenticar ou manter sessão válida.
+
+Usuários `INATIVO` ou `BLOQUEADO` devem receber falha genérica de autenticação.
+
+### REQ-UA-015 — CRUD de administradores pelo backoffice
+
+O sistema deve permitir que administradores com perfil `TOTAL` criem, consultem, atualizem e inativem administradores pelo backoffice.
+
+Administrador criado pelo backoffice deve receber senha temporária forte retornada uma única vez.
+
+### REQ-UA-016 — Cadastro e autogestão de paciente pelo mobile
+
+O sistema deve permitir cadastro público de paciente pelo aplicativo mobile.
+
+Paciente não deve possuir perfis administrativos.
+
+Paciente autenticado deve poder consultar, atualizar e inativar o próprio cadastro.
+
+### REQ-UA-017 — Troca obrigatória de senha temporária
+
+Usuário criado com senha temporária deve possuir `trocaSenhaObrigatoria = true`.
+
+Login normal desse usuário não deve gerar sessão ou token e deve retornar `409` com código `TROCA_SENHA_OBRIGATORIA`.
+
+### REQ-UA-018 — Garantia de administrador full
+
+O sistema deve impedir que a última conta de administrador `ATIVO` com perfil `TOTAL` seja inativada ou perca esse perfil.
+
+### REQ-UA-019 — Exclusão lógica
+
+Exclusão de usuário deve ser realizada por inativação, preservando histórico e revogando sessões ativas.
 
 ## 6. Regras de negócio
 
@@ -162,13 +216,35 @@ Um administrador deve possuir somente o nível de acesso necessário ao seu pape
 
 O significado operacional de cada nível deve ser definido nas specifications das funcionalidades protegidas por autorização.
 
+### RN-UA-010 — Perfil full administrativo
+
+O nível `full` do domínio de negócio é representado por `PerfilAdministrativo.nome = TOTAL`.
+
+### RN-UA-011 — Administrador mínimo
+
+Deve existir ao menos um administrador `ATIVO` com perfil `TOTAL`.
+
+Ao violar essa regra, o sistema deve retornar a mensagem:
+
+`Deve existir ao menos um administrador ativo com permissão TOTAL.`
+
+### RN-UA-012 — Paciente sem perfis administrativos
+
+Paciente cadastrado pelo mobile ou atualizado pelo backoffice não deve receber perfis administrativos.
+
 ## 7. Segurança
 
 - Senhas recebidas em operações de cadastro, login ou alteração de senha devem ser tratadas como dado sensível.
+- Senhas devem utilizar bcrypt com custo padrão 12 nesta entrega.
+- Access token deve utilizar JWT HS256 com expiração padrão de 15 minutos.
+- Refresh token deve ser opaco, rotativo, armazenado em cookie HttpOnly e persistido somente como hash HMAC.
+- Proteção CSRF deve ser exigida para operações baseadas no refresh cookie.
 - Hashes de senha não devem ser retornados em respostas da API.
 - Dados de autenticação não devem ser registrados em logs.
 - Regras de negócio devem permanecer desacopladas de JWT, cookies e sessão HTTP.
 - Autorização deve ser validada no backend.
+- Rotas de backoffice devem exigir Bearer token e perfil administrativo `TOTAL`.
+- Senha temporária deve ser retornada somente na resposta de criação de administrador.
 
 ## 8. Privacidade e LGPD
 
@@ -189,9 +265,6 @@ Dados de paciente possuem maior sensibilidade e não devem ser expostos a admini
 Esta specification não define:
 
 - telas do frontend;
-- fluxo completo de cadastro público;
-- política definitiva de expiração de sessão;
-- estratégia de refresh token;
 - recuperação de senha;
 - confirmação de email;
 - autenticação multifator;
@@ -200,9 +273,5 @@ Esta specification não define:
 
 ## 10. Pendências
 
-- Definir se cadastro de paciente e administrador ocorre por endpoint público, operação interna ou backoffice.
-- Definir a política final de autenticação aplicável entre o mecanismo temporário e o JWT do MVP.
-- Definir política de complexidade de senha.
-- Definir regras de unicidade para email e login.
-- Definir se telefone é obrigatório no primeiro cadastro ou pode ser completado posteriormente.
+- Definir se telefone deve evoluir de campo único para cardinalidade persistida `1..*`.
 - Definir retenção e auditoria de histórico de acessos.

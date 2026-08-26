@@ -86,11 +86,11 @@ Especialização de usuário para operação administrativa.
 
 Atributos conceituais:
 
-- `nivelAcesso: NivelAcesso`
+- `perfisAdministrativos: List<PerfilAdministrativo>`
 
 ### Enumerações
 
-#### NivelAcesso
+#### PerfilAdministrativo
 
 Valores:
 
@@ -99,7 +99,9 @@ Valores:
 - `GERENTE_DE_APOIOS`
 - `ANALISTA_DE_INTERACOES`
 
-O significado operacional de cada nível deve ser aplicado pelos casos de uso protegidos, não pela entidade isoladamente.
+O significado operacional de cada perfil deve ser aplicado pelos casos de uso protegidos, não pela entidade isoladamente.
+
+`TOTAL` representa o administrador full.
 
 ### Objetos de valor
 
@@ -198,6 +200,50 @@ Saídas:
 - sucesso sem retornar senha ou hash;
 - erro de autenticação, erro de validação ou erro de credencial inválida.
 
+### Trocar senha temporária
+
+Entrada:
+
+- email ou login;
+- senha temporária;
+- nova senha.
+
+Fluxo:
+
+```text
+Receber credenciais temporárias
+  ↓
+Buscar usuário
+  ↓
+Validar status ATIVO e trocaSenhaObrigatoria
+  ↓
+Comparar senha temporária com hash
+  ↓
+Validar política da nova senha
+  ↓
+Persistir novo hash e trocaSenhaObrigatoria=false
+  ↓
+Revogar sessões existentes
+```
+
+### Gestão de administradores pelo backoffice
+
+Somente usuário autenticado com perfil `TOTAL` pode:
+
+- listar usuários;
+- consultar usuário por ID;
+- criar administrador com senha temporária;
+- atualizar dados, status e perfis de administrador;
+- inativar administrador.
+
+Ao remover `TOTAL` ou tornar administrador não ativo, o caso de uso deve validar que outro administrador `ATIVO` com `TOTAL` permanece.
+
+### Gestão de pacientes
+
+O app mobile pode cadastrar paciente publicamente e, depois de autenticado, o paciente pode consultar, atualizar e inativar o próprio cadastro.
+
+O backoffice com `TOTAL` pode atualizar dados cadastrais/endereço e inativar paciente.
+
 ## 5. API
 
 Atende:
@@ -205,16 +251,32 @@ Atende:
 - REQ-UA-003
 - REQ-UA-008
 - REQ-UA-009
+- REQ-UA-011
+- REQ-UA-012
+- REQ-UA-013
 
-Endpoints concretos devem ser definidos quando a política final de autenticação estiver fechada.
-
-Contratos candidatos:
+Contratos definidos para esta entrega:
 
 ```text
-POST /auth/login
-POST /auth/logout
-POST /auth/change-password
-GET  /auth/me
+POST   /api/auth/login
+POST   /api/auth/refresh
+POST   /api/auth/logout
+POST   /api/auth/change-password
+POST   /api/auth/change-temporary-password
+GET    /api/auth/me
+
+GET    /api/backoffice/usuarios
+GET    /api/backoffice/usuarios/:id
+POST   /api/backoffice/administradores
+PATCH  /api/backoffice/administradores/:id
+DELETE /api/backoffice/administradores/:id
+PATCH  /api/backoffice/pacientes/:id
+DELETE /api/backoffice/pacientes/:id
+
+POST   /api/mobile/pacientes
+GET    /api/mobile/pacientes/me
+PATCH  /api/mobile/pacientes/me
+DELETE /api/mobile/pacientes/me
 ```
 
 Esses contratos não devem expor:
@@ -222,9 +284,12 @@ Esses contratos não devem expor:
 - `senha`;
 - `senhaHash`;
 - detalhes internos do mecanismo de autenticação;
+- refresh token, CSRF hash ou hash HMAC;
 - dados de paciente sem finalidade explícita.
 
 Validação de entrada deve ocorrer na borda da API com Zod, conforme arquitetura do backend.
+
+Documentação Swagger deve declarar Bearer auth, cookies/CSRF quando aplicável, schemas de request/response e respostas `400`, `401`, `403`, `404` e `409`.
 
 ## 6. Persistência
 
@@ -250,17 +315,25 @@ paciente
 administrador
 perfil_administrativo
 administrador_perfil
+sessao_autenticacao
 ```
 
-O schema Prisma atual ainda não contém essas entidades. A modelagem concreta deve ser definida em task própria antes da implementação.
+O schema Prisma atual contém as entidades principais de identidade.
+
+Entregas deste módulo:
+
+- `sessao_autenticacao` para refresh token rotativo, proteção CSRF e revogação de sessão;
+- `usuario.troca_senha_obrigatoria` para bloquear login normal até troca de senha temporária;
+- seed idempotente dos perfis administrativos `TOTAL`, `MODERADOR_DE_CONTEUDO`, `GERENTE_DE_APOIOS` e `ANALISTA_DE_INTERACOES`.
 
 Diretrizes:
 
 - senha deve ser persistida apenas como hash;
 - email e login devem ter índices compatíveis com a regra de unicidade definida;
-- telefone deve permitir cardinalidade `1..*`;
+- telefone permanece como campo único nesta entrega;
 - relacionamentos com acompanhamento, consultas, medicamentos e apoios devem respeitar as specifications dos respectivos contextos;
 - dados administrativos não devem ser usados como atalho para autorização irrestrita.
+- `Endereco.localizacaoPostgis` deve ser gravado por SQL parametrizado com `ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)` porque o campo é `Unsupported` no Prisma Client.
 
 ## 7. Segurança e autorização
 
@@ -288,6 +361,18 @@ Application use case
 
 Autorização deve ser aplicada nos casos de uso protegidos. A existência de `Administrador` e `NivelAcesso` não autoriza automaticamente acesso a qualquer recurso.
 
+Decisões técnicas desta entrega:
+
+- senha com bcrypt custo 12;
+- access token JWT HS256 com TTL de 15 minutos;
+- refresh token opaco rotativo com TTL de 7 dias;
+- refresh token em cookie HttpOnly;
+- CSRF token legível pelo cliente e validado por header `x-csrf-token`;
+- refresh token e CSRF token persistidos somente como HMAC SHA-256.
+- backoffice protegido por Bearer token e perfil administrativo `TOTAL`;
+- sessão autenticada carrega `tipo` e `perfisAdministrativos`;
+- paciente autenticado só pode operar o próprio cadastro nas rotas mobile.
+
 ## 8. Tratamento de erros
 
 Erros esperados:
@@ -303,6 +388,9 @@ Erros esperados:
 - data de nascimento inválida;
 - acesso não autenticado;
 - acesso autenticado sem autorização.
+- tentativa de duplicar email ou login;
+- tentativa de inativar/remover `TOTAL` do último administrador full;
+- login com troca de senha obrigatória.
 
 Respostas de autenticação não devem revelar qual parte da credencial falhou.
 
@@ -354,17 +442,12 @@ Testes de segurança:
 ## 11. Impactos
 
 - Introduz o primeiro design formal do contexto de identidade no SDD da feature.
-- Exige modelagem futura no Prisma para `usuario`, `paciente`, `administrador` e estruturas associadas.
+- Adiciona persistência de sessões autenticadas ao Prisma.
 - Afeta a estratégia de segurança do backend por estabelecer a fronteira entre autenticação técnica e identidade autenticada.
 - Deve ser revisado antes de implementação por envolver dados pessoais e credenciais.
 
 ## 12. Pendências
 
-- Confirmar política final de autenticação entre sessão temporária e JWT do MVP.
 - Confirmar existência ou criação formal do ADR de autenticação citado pela arquitetura.
-- Definir contratos finais da API.
-- Definir algoritmo de hash e parâmetros operacionais.
-- Definir política de senha.
-- Definir unicidade de email e login.
-- Definir modelo persistido de telefone.
+- Definir evolução do modelo persistido de telefone para cardinalidade `1..*`, se necessário.
 - Definir vínculo entre `NivelAcesso` e perfis administrativos já citados na arquitetura de banco.
