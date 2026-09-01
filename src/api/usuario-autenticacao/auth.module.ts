@@ -278,6 +278,12 @@ import { MobilePacientesController } from './mobile-pacientes.controller.js';
     JwtAuthGuard,
     AdminProfileGuard,
   ],
-  exports: [JwtAuthGuard, AdminProfileGuard],
+  exports: [
+    ACCESS_TOKEN_SERVICE,
+    AUTH_SESSION_REPOSITORY,
+    USUARIO_REPOSITORY,
+    JwtAuthGuard,
+    AdminProfileGuard,
+  ],
 })
 export class AuthModule {}
