@@ -5,8 +5,8 @@ const SYMBOL_PATTERN = /[^A-Za-z0-9]/;
 export function assertValidPlainPassword(password: string): void {
   const byteLength = Buffer.byteLength(password, 'utf8');
 
-  if (byteLength < 12 || byteLength > 72) {
-    throw new DomainValidationError('Senha deve ter entre 12 e 72 bytes.');
+  if (byteLength < 6 || byteLength > 72) {
+    throw new DomainValidationError('Senha deve ter entre 6 e 72 bytes.');
   }
 
   if (!/[A-Z]/.test(password)) {
