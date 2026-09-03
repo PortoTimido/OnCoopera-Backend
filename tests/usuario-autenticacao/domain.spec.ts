@@ -57,6 +57,7 @@ test.group('usuario-autenticacao domain', () => {
 
   test('valida política de senha nova', ({ assert }) => {
     assertValidPlainPassword('SenhaForte!123');
+    assertValidPlainPassword('Aa1!bb');
 
     assert.equal(
       throwsSync(() => assertValidPlainPassword('curta')),
