@@ -18,6 +18,13 @@ enum TipoApoio {
   CLINICA
   TRANSPORTE
   CASA_APOIO
+  PSICOLOGO
+}
+
+enum StatusApoio {
+  RASCUNHO
+  ATIVO
+  DESATIVADO
 }
 
 enum StatusArtigo {
@@ -165,8 +172,8 @@ model Apoio {
   nome                  String
   tipoApoio             TipoApoio              @map("tipo_apoio")
   telefone              String
-  descricao             String                 @db.Text
-  statusAdministrativo  String                 @map("status_administrativo")
+  descricao             String?                @db.Text
+  statusAdministrativo  StatusApoio            @map("status_administrativo")
   dataCriacao           DateTime               @default(now()) @map("data_criacao")
   dataAtualizacao       DateTime               @updatedAt @map("data_atualizacao")
   endereco              Endereco               @relation(fields: [enderecoId], references: [id])
