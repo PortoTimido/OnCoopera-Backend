@@ -197,7 +197,7 @@ Este repositório possui responsabilidade direta sobre o modelo de dados e acess
 
 O schema atual contém estruturas relacionadas a usuários, pacientes, administradores, perfis administrativos, sessões de autenticação, endereços, registros diários, sintomas, consultas, rede de apoio, artigos, categorias e tags.
 
-A primeira migration habilita a extensão PostGIS e define o campo `localizacao_postgis` como `geometry(Point, 4326)`. Não há script de seed configurado no `package.json`.
+A primeira migration habilita a extensão PostGIS e define o campo `localizacao_postgis` como `geometry(Point, 4326)`. O seed administrativo pode ser executado com `npm run db:seed`.
 
 ## Testes
 
