@@ -1,0 +1,178 @@
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
+import {
+  ApiBadRequestResponse,
+  ApiBearerAuth,
+  ApiBody,
+  ApiConflictResponse,
+  ApiCreatedResponse,
+  ApiForbiddenResponse,
+  ApiNoContentResponse,
+  ApiNotFoundResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiQuery,
+  ApiTags,
+  ApiUnauthorizedResponse,
+} from '@nestjs/swagger';
+import {
+  CreateApoioUseCase,
+  DeactivateApoioUseCase,
+  GetApoioUseCase,
+  ListApoiosUseCase,
+  UpdateApoioUseCase,
+} from '../../application/radar-apoio/use-cases/apoio.use-cases.js';
+import { ZodValidationPipe } from '../common/zod-validation.pipe.js';
+import { JwtAuthGuard } from '../usuario-autenticacao/jwt-auth.guard.js';
+import { ApoioManagementGuard } from './apoio-management.guard.js';
+import { mapApoioError } from './radar-apoio-error.mapper.js';
+import {
+  createApoioSchema,
+  listApoiosQuerySchema,
+  updateApoioSchema,
+  type CreateApoioRequestBody,
+  type ListApoiosQuery,
+  type UpdateApoioRequestBody,
+} from './radar-apoio.schemas.js';
+import {
+  ApoioSwaggerDto,
+  CreateApoioSwaggerRequestDto,
+  ErrorSwaggerResponseDto,
+  PaginatedApoiosSwaggerDto,
+  UpdateApoioSwaggerRequestDto,
+} from './radar-apoio.swagger.js';
+
+@ApiTags('Backoffice - Radar de Apoio')
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard, ApoioManagementGuard)
+@Controller('backoffice/apoios')
+export class BackofficeApoiosController {
+  constructor(
+    private readonly listApoios: ListApoiosUseCase,
+    private readonly getApoio: GetApoioUseCase,
+    private readonly createApoio: CreateApoioUseCase,
+    private readonly updateApoio: UpdateApoioUseCase,
+    private readonly deactivateApoio: DeactivateApoioUseCase,
+  ) {}
+
+  @Get()
+  @ApiOperation({
+    summary: 'Listar apoios',
+    description:
+      'Lista apoios para gestao no backoffice com filtros, paginacao e busca por localidade.',
+  })
+  @ApiQuery({ name: 'page', required: false, example: 1 })
+  @ApiQuery({ name: 'pageSize', required: false, example: 20 })
+  @ApiQuery({ name: 'search', required: false, example: 'esperança' })
+  @ApiQuery({
+    name: 'tipoApoio',
+    required: false,
+    enum: ['ONG', 'CLINICA', 'TRANSPORTE', 'CASA_APOIO', 'PSICOLOGO'],
+  })
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    enum: ['RASCUNHO', 'ATIVO', 'DESATIVADO'],
+  })
+  @ApiQuery({ name: 'cidade', required: false, example: 'São Paulo' })
+  @ApiQuery({ name: 'latitude', required: false, example: -23.563099 })
+  @ApiQuery({ name: 'longitude', required: false, example: -46.654293 })
+  @ApiOkResponse({
+    description: 'Lista paginada de apoios.',
+    type: PaginatedApoiosSwaggerDto,
+  })
+  @ApiBadRequestResponse({ type: ErrorSwaggerResponseDto })
+  @ApiUnauthorizedResponse({ type: ErrorSwaggerResponseDto })
+  @ApiForbiddenResponse({ type: ErrorSwaggerResponseDto })
+  async list(
+    @Query(new ZodValidationPipe(listApoiosQuerySchema))
+    query: ListApoiosQuery,
+  ) {
+    return this.listApoios.execute(query);
+  }
+
+  @Get(':id')
+  @ApiOperation({ summary: 'Consultar apoio por ID' })
+  @ApiOkResponse({ description: 'Apoio encontrado.', type: ApoioSwaggerDto })
+  @ApiBadRequestResponse({ type: ErrorSwaggerResponseDto })
+  @ApiUnauthorizedResponse({ type: ErrorSwaggerResponseDto })
+  @ApiForbiddenResponse({ type: ErrorSwaggerResponseDto })
+  @ApiNotFoundResponse({ type: ErrorSwaggerResponseDto })
+  async getById(@Param('id', new ParseUUIDPipe()) id: string) {
+    try {
+      return await this.getApoio.execute(id);
+    } catch (error) {
+      throw mapApoioError(error);
+    }
+  }
+
+  @Post()
+  @ApiOperation({ summary: 'Criar apoio' })
+  @ApiCreatedResponse({ description: 'Apoio criado.', type: ApoioSwaggerDto })
+  @ApiBody({ type: CreateApoioSwaggerRequestDto })
+  @ApiBadRequestResponse({ type: ErrorSwaggerResponseDto })
+  @ApiUnauthorizedResponse({ type: ErrorSwaggerResponseDto })
+  @ApiForbiddenResponse({ type: ErrorSwaggerResponseDto })
+  @ApiConflictResponse({ type: ErrorSwaggerResponseDto })
+  async create(
+    @Body(new ZodValidationPipe(createApoioSchema))
+    body: CreateApoioRequestBody,
+  ) {
+    try {
+      return await this.createApoio.execute(body);
+    } catch (error) {
+      throw mapApoioError(error);
+    }
+  }
+
+  @Patch(':id')
+  @ApiOperation({ summary: 'Atualizar apoio' })
+  @ApiOkResponse({ description: 'Apoio atualizado.', type: ApoioSwaggerDto })
+  @ApiBody({ type: UpdateApoioSwaggerRequestDto })
+  @ApiBadRequestResponse({ type: ErrorSwaggerResponseDto })
+  @ApiUnauthorizedResponse({ type: ErrorSwaggerResponseDto })
+  @ApiForbiddenResponse({ type: ErrorSwaggerResponseDto })
+  @ApiNotFoundResponse({ type: ErrorSwaggerResponseDto })
+  @ApiConflictResponse({ type: ErrorSwaggerResponseDto })
+  async update(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body(new ZodValidationPipe(updateApoioSchema))
+    body: UpdateApoioRequestBody,
+  ) {
+    try {
+      return await this.updateApoio.execute(id, body);
+    } catch (error) {
+      throw mapApoioError(error);
+    }
+  }
+
+  @Delete(':id')
+  @HttpCode(204)
+  @ApiOperation({
+    summary: 'Desativar apoio',
+    description: 'Realiza exclusao logica alterando o status para DESATIVADO.',
+  })
+  @ApiNoContentResponse({ description: 'Apoio desativado.' })
+  @ApiBadRequestResponse({ type: ErrorSwaggerResponseDto })
+  @ApiUnauthorizedResponse({ type: ErrorSwaggerResponseDto })
+  @ApiForbiddenResponse({ type: ErrorSwaggerResponseDto })
+  @ApiNotFoundResponse({ type: ErrorSwaggerResponseDto })
+  async delete(@Param('id', new ParseUUIDPipe()) id: string): Promise<void> {
+    try {
+      await this.deactivateApoio.execute(id);
+    } catch (error) {
+      throw mapApoioError(error);
+    }
+  }
+}
