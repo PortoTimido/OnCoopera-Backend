@@ -6,6 +6,7 @@ import { ArtigoModule } from './api/artigo/artigo.module.js';
 import { RadarApoioModule } from './api/radar-apoio/radar-apoio.module.js';
 import { AuthModule } from './api/usuario-autenticacao/auth.module.js';
 import { PrismaModule } from './infrastructure/database/prisma.module.js';
+import { DiarioSintomasModule } from './api/diario-sintomas/diario-sintomas.module.js';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { PrismaModule } from './infrastructure/database/prisma.module.js';
     AuthModule,
     ArtigoModule,
     RadarApoioModule,
+    DiarioSintomasModule,
   ],
   controllers: [AppController],
   providers: [AppService],

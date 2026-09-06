@@ -130,6 +130,7 @@ model Endereco {
 model RegistroDiario {
   id         String            @id @default(uuid()) @db.Uuid
   pacienteId String            @map("paciente_id") @db.Uuid
+  dataRegistro DateTime        @map("data_registro") @db.Date
   dataHora   DateTime          @default(now()) @map("data_hora")
   humor      String
   notaVozUrl String?           @map("nota_voz_url")
@@ -137,6 +138,7 @@ model RegistroDiario {
   sintomas   RegistroSintoma[]
 
   @@index([pacienteId])
+  @@unique([pacienteId, dataRegistro])
   @@map("registro_diario")
 }
 
@@ -145,6 +147,7 @@ model RegistroSintoma {
   registroDiarioId String         @map("registro_diario_id") @db.Uuid
   sintomaTipo      String         @map("sintoma_tipo")
   intensidade      Int
+  descricaoOutro   String?        @map("descricao_outro")
   registroDiario   RegistroDiario @relation(fields: [registroDiarioId], references: [id], onDelete: Cascade)
 
   @@index([registroDiarioId])

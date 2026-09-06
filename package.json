@@ -14,7 +14,7 @@
     "start:prod": "node dist/main",
     "db:seed": "prisma db seed",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
-    "test": "TS_NODE_TRANSPILE_ONLY=true node --loader ts-node/esm --enable-source-maps bin/test.ts",
+    "test": "node --loader ts-node/esm/transpile-only --enable-source-maps bin/test.ts",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
