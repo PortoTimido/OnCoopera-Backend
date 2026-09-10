@@ -2,6 +2,9 @@ import 'dotenv/config';
 import bcrypt from 'bcrypt';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../generated/prisma/client.js';
+import { seedApoios } from './seeders/apoios.seeder.js';
+import { seedArtigos } from './seeders/artigos.seeder.js';
+import { seedUsuarios } from './seeders/usuarios.seeder.js';
 
 const perfisAdministrativos = [
   {
@@ -109,6 +112,10 @@ async function main(): Promise<void> {
         })),
         skipDuplicates: true,
       });
+
+      await seedUsuarios(tx, senhaHash);
+      await seedArtigos(tx, usuario.id);
+      await seedApoios(tx);
     });
   } finally {
     await prisma.$disconnect();
