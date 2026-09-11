@@ -1,6 +1,6 @@
 import {
-  PERFIL_ADMINISTRATIVO_TOTAL,
-  type PerfilAdministrativoNome,
+  PERMISSAO_ADMINISTRATIVA_TOTAL,
+  type PermissaoAdministrativaNome,
   type StatusUsuario,
 } from '../../../domain/usuario-autenticacao/entities/usuario.entity.js';
 import { assertRemainingTotalAdministrator } from '../../../domain/usuario-autenticacao/services/admin-full-permission-policy.js';
@@ -14,12 +14,12 @@ import type {
 import type { AuthSessionRepository } from '../ports/auth-session.repository.js';
 import {
   normalizePartialUsuarioBaseData,
-  normalizePerfisAdministrativos,
+  normalizePermissoesAdministrativas,
 } from './usuario-data.mapper.js';
 
 export interface UpdateAdministradorInput extends Partial<UsuarioBaseData> {
   status?: StatusUsuario;
-  perfisAdministrativos?: string[];
+  permissoesAdministrativas?: string[];
 }
 
 export class UpdateAdministradorUseCase {
@@ -47,20 +47,22 @@ export class UpdateAdministradorUseCase {
       );
     }
 
-    const perfisAdministrativos =
-      input.perfisAdministrativos === undefined
+    const permissoesAdministrativas =
+      input.permissoesAdministrativas === undefined
         ? undefined
-        : normalizePerfisAdministrativos(input.perfisAdministrativos);
+        : normalizePermissoesAdministrativas(input.permissoesAdministrativas);
 
     await this.assertCanUpdateTotalAdmin(id, current, {
       status: input.status,
-      perfisAdministrativos,
+      permissoesAdministrativas,
     });
 
     const data: UpdateAdministradorRepositoryInput['data'] = {
       ...normalizePartialUsuarioBaseData(input),
       ...(input.status !== undefined ? { status: input.status } : {}),
-      ...(perfisAdministrativos !== undefined ? { perfisAdministrativos } : {}),
+      ...(permissoesAdministrativas !== undefined
+        ? { permissoesAdministrativas }
+        : {}),
     };
 
     const updated = await this.usuarios.updateAdministrador({ id, data });
@@ -77,20 +79,21 @@ export class UpdateAdministradorUseCase {
     current: UsuarioDetails,
     next: {
       status?: StatusUsuario;
-      perfisAdministrativos?: PerfilAdministrativoNome[];
+      permissoesAdministrativas?: PermissaoAdministrativaNome[];
     },
   ): Promise<void> {
     const isCurrentlyActiveTotal =
       current.usuario.status === 'ATIVO' &&
-      current.usuario.perfisAdministrativos.includes(
-        PERFIL_ADMINISTRATIVO_TOTAL,
+      current.usuario.permissoesAdministrativas.includes(
+        PERMISSAO_ADMINISTRATIVA_TOTAL,
       );
     const nextStatus = next.status ?? current.usuario.status;
-    const nextPerfis =
-      next.perfisAdministrativos ?? current.usuario.perfisAdministrativos;
+    const nextPermissoes =
+      next.permissoesAdministrativas ??
+      current.usuario.permissoesAdministrativas;
     const keepsActiveTotal =
       nextStatus === 'ATIVO' &&
-      nextPerfis.includes(PERFIL_ADMINISTRATIVO_TOTAL);
+      nextPermissoes.includes(PERMISSAO_ADMINISTRATIVA_TOTAL);
 
     if (isCurrentlyActiveTotal && !keepsActiveTotal) {
       const remaining =

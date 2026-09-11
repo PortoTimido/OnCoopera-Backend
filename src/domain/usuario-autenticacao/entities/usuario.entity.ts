@@ -7,15 +7,15 @@ import { Telefone } from '../value-objects/telefone.value-object.js';
 
 export type StatusUsuario = 'ATIVO' | 'INATIVO' | 'BLOQUEADO';
 export type TipoUsuario = 'USUARIO' | 'PACIENTE' | 'ADMINISTRADOR';
-export const PERFIL_ADMINISTRATIVO_TOTAL = 'TOTAL';
-export const PERFIS_ADMINISTRATIVOS_CONHECIDOS = [
-  PERFIL_ADMINISTRATIVO_TOTAL,
-  'MODERADOR_DE_CONTEUDO',
-  'GERENTE_DE_APOIOS',
-  'ANALISTA_DE_INTERACOES',
+export const PERMISSAO_ADMINISTRATIVA_TOTAL = 'TOTAL';
+export const PERMISSOES_ADMINISTRATIVAS_CONHECIDAS = [
+  PERMISSAO_ADMINISTRATIVA_TOTAL,
+  'GERENCIAR_USUARIOS',
+  'GESTAO_CONTEUDOS',
+  'GESTAO_RADAR_APOIO',
 ] as const;
-export type PerfilAdministrativoNome =
-  (typeof PERFIS_ADMINISTRATIVOS_CONHECIDOS)[number];
+export type PermissaoAdministrativaNome =
+  (typeof PERMISSOES_ADMINISTRATIVAS_CONHECIDAS)[number];
 
 export interface PublicUsuario {
   id: string;
@@ -26,7 +26,13 @@ export interface PublicUsuario {
   dataNascimento: Date;
   status: StatusUsuario;
   tipo: TipoUsuario;
-  perfisAdministrativos: PerfilAdministrativoNome[];
+  permissoesAdministrativas: PermissaoAdministrativaNome[];
+  /**
+   * @deprecated Mantido apenas para compatibilidade de resposta durante a
+   * transição do modelo de perfis administrativos. Não é utilizado para
+   * autorização; sempre espelha `permissoesAdministrativas`.
+   */
+  perfisAdministrativos: PermissaoAdministrativaNome[];
   trocaSenhaObrigatoria: boolean;
   ultimoAcesso: Date | null;
 }
@@ -41,7 +47,7 @@ export interface UsuarioProps {
   dataNascimento: DataNascimento;
   status: StatusUsuario;
   tipo: TipoUsuario;
-  perfisAdministrativos: PerfilAdministrativoNome[];
+  permissoesAdministrativas: PermissaoAdministrativaNome[];
   trocaSenhaObrigatoria: boolean;
   dataCriacao: Date;
   dataAtualizacao: Date;
@@ -75,8 +81,8 @@ export class Usuario {
     return this.props.tipo;
   }
 
-  get perfisAdministrativos(): PerfilAdministrativoNome[] {
-    return [...this.props.perfisAdministrativos];
+  get permissoesAdministrativas(): PermissaoAdministrativaNome[] {
+    return [...this.props.permissoesAdministrativas];
   }
 
   get trocaSenhaObrigatoria(): boolean {
@@ -87,8 +93,12 @@ export class Usuario {
     return this.props.status === 'ATIVO';
   }
 
-  hasPerfilAdministrativo(perfil: PerfilAdministrativoNome): boolean {
-    return this.props.perfisAdministrativos.includes(perfil);
+  hasPermissaoAdministrativa(permissao: PermissaoAdministrativaNome): boolean {
+    return (
+      this.props.permissoesAdministrativas.includes(
+        PERMISSAO_ADMINISTRATIVA_TOTAL,
+      ) || this.props.permissoesAdministrativas.includes(permissao)
+    );
   }
 
   alterarSenha(
@@ -121,7 +131,8 @@ export class Usuario {
       dataNascimento: this.props.dataNascimento.value,
       status: this.props.status,
       tipo: this.props.tipo,
-      perfisAdministrativos: [...this.props.perfisAdministrativos],
+      permissoesAdministrativas: [...this.props.permissoesAdministrativas],
+      perfisAdministrativos: [...this.props.permissoesAdministrativas],
       trocaSenhaObrigatoria: this.props.trocaSenhaObrigatoria,
       ultimoAcesso: this.props.ultimoAcesso,
     };

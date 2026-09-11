@@ -13,7 +13,6 @@ import {
 import { PrismaService } from '../../infrastructure/database/prisma.service.js';
 import { PrismaApoioRepository } from '../../infrastructure/radar-apoio/prisma-apoio.repository.js';
 import { AuthModule } from '../usuario-autenticacao/auth.module.js';
-import { ApoioManagementGuard } from './apoio-management.guard.js';
 import { BackofficeApoiosController } from './backoffice-apoios.controller.js';
 import { MobileApoiosController } from './mobile-apoios.controller.js';
 
@@ -52,7 +51,6 @@ import { MobileApoiosController } from './mobile-apoios.controller.js';
         new DeactivateApoioUseCase(apoios),
       inject: [APOIO_REPOSITORY],
     },
-    ApoioManagementGuard,
   ],
 })
 export class RadarApoioModule {}

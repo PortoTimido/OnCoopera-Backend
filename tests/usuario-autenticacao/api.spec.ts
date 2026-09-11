@@ -8,7 +8,7 @@ import {
 import { test } from '@japa/runner';
 import type { CookieOptions, Response } from 'express';
 import { ZodValidationPipe } from '../../src/api/common/zod-validation.pipe.js';
-import { AdminProfileGuard } from '../../src/api/usuario-autenticacao/admin-profile.guard.js';
+import { PermissaoAdministrativaGuard } from '../../src/api/usuario-autenticacao/permissao-administrativa.guard.js';
 import { AuthController } from '../../src/api/usuario-autenticacao/auth.controller.js';
 import {
   CSRF_TOKEN_COOKIE,
@@ -202,8 +202,12 @@ test.group('usuario-autenticacao API contracts', () => {
     );
   });
 
-  test('guard administrativo exige perfil TOTAL', ({ assert }) => {
-    const guard = new AdminProfileGuard(createReflector(['TOTAL']));
+  test('guard administrativo autoriza por permissão específica', ({
+    assert,
+  }) => {
+    const guard = new PermissaoAdministrativaGuard(
+      createReflector(['GERENCIAR_USUARIOS']),
+    );
 
     assert.equal(
       guard.canActivate(
@@ -212,11 +216,41 @@ test.group('usuario-autenticacao API contracts', () => {
             usuarioId: 'admin-1',
             sessaoId: 'session-1',
             tipo: 'ADMINISTRADOR',
-            perfisAdministrativos: ['TOTAL'],
+            permissoesAdministrativas: ['GERENCIAR_USUARIOS'],
           },
         }),
       ),
       true,
+    );
+  });
+
+  test('guard administrativo autoriza qualquer recurso para TOTAL', ({
+    assert,
+  }) => {
+    const guard = new PermissaoAdministrativaGuard(
+      createReflector(['GESTAO_RADAR_APOIO']),
+    );
+
+    assert.equal(
+      guard.canActivate(
+        createExecutionContext({
+          auth: {
+            usuarioId: 'admin-1',
+            sessaoId: 'session-1',
+            tipo: 'ADMINISTRADOR',
+            permissoesAdministrativas: ['TOTAL'],
+          },
+        }),
+      ),
+      true,
+    );
+  });
+
+  test('guard administrativo nega acesso sem a permissão necessária', ({
+    assert,
+  }) => {
+    const guard = new PermissaoAdministrativaGuard(
+      createReflector(['GERENCIAR_USUARIOS']),
     );
 
     const error = captureSyncError(() =>
@@ -226,7 +260,7 @@ test.group('usuario-autenticacao API contracts', () => {
             usuarioId: 'admin-2',
             sessaoId: 'session-2',
             tipo: 'ADMINISTRADOR',
-            perfisAdministrativos: ['MODERADOR_DE_CONTEUDO'],
+            permissoesAdministrativas: ['GESTAO_CONTEUDOS'],
           },
         }),
       ),
@@ -291,7 +325,7 @@ function createController(options?: {
             dataNascimento: new Date('1990-05-20T00:00:00.000Z'),
             status: 'ATIVO',
             tipo: 'USUARIO',
-            perfisAdministrativos: [],
+            permissoesAdministrativas: [],
             trocaSenhaObrigatoria: false,
             ultimoAcesso: new Date('2026-01-01T00:00:00.000Z'),
           },

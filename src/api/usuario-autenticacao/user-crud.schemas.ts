@@ -1,5 +1,8 @@
 import { z } from 'zod';
-import { PERFIS_ADMINISTRATIVOS_CONHECIDOS } from '../../domain/usuario-autenticacao/entities/usuario.entity.js';
+import {
+  PERMISSAO_ADMINISTRATIVA_TOTAL,
+  PERMISSOES_ADMINISTRATIVAS_CONHECIDAS,
+} from '../../domain/usuario-autenticacao/entities/usuario.entity.js';
 
 const dateSchema = z
   .string()
@@ -18,9 +21,22 @@ export const tipoUsuarioSchema = z.enum([
   'PACIENTE',
   'ADMINISTRADOR',
 ]);
-export const perfilAdministrativoSchema = z.enum(
-  PERFIS_ADMINISTRATIVOS_CONHECIDOS,
+export const permissaoAdministrativaSchema = z.enum(
+  PERMISSOES_ADMINISTRATIVAS_CONHECIDAS,
 );
+
+export const permissoesAdministrativasSchema = z
+  .array(permissaoAdministrativaSchema)
+  .default([])
+  .refine(
+    (permissoes) =>
+      !permissoes.includes(PERMISSAO_ADMINISTRATIVA_TOTAL) ||
+      permissoes.length === 1,
+    {
+      message:
+        'A permissão TOTAL é exclusiva: não pode ser combinada com outras permissões.',
+    },
+  );
 
 export const listUsuariosQuerySchema = z
   .object({
@@ -29,7 +45,7 @@ export const listUsuariosQuerySchema = z
     search: optionalQueryString,
     tipo: tipoUsuarioSchema.optional(),
     status: statusUsuarioSchema.optional(),
-    perfil: perfilAdministrativoSchema.optional(),
+    permissao: permissaoAdministrativaSchema.optional(),
   })
   .strict();
 
@@ -57,7 +73,7 @@ export const enderecoSchema = z
 
 export const createAdministradorSchema = usuarioBaseSchema
   .extend({
-    perfisAdministrativos: z.array(perfilAdministrativoSchema).min(1),
+    permissoesAdministrativas: permissoesAdministrativasSchema,
   })
   .strict();
 
@@ -65,10 +81,7 @@ export const updateAdministradorSchema = usuarioBaseSchema
   .partial()
   .extend({
     status: statusUsuarioSchema.optional(),
-    perfisAdministrativos: z
-      .array(perfilAdministrativoSchema)
-      .min(1)
-      .optional(),
+    permissoesAdministrativas: permissoesAdministrativasSchema.optional(),
   })
   .strict()
   .refine((value) => Object.keys(value).length > 0, {

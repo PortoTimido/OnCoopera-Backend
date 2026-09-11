@@ -38,7 +38,8 @@ import {
 } from '../../application/artigo/use-cases/manage-taxonomia.use-cases.js';
 import { ZodValidationPipe } from '../common/zod-validation.pipe.js';
 import { JwtAuthGuard } from '../usuario-autenticacao/jwt-auth.guard.js';
-import { ArticleContentGuard } from './article-content.guard.js';
+import { PermissaoAdministrativaGuard } from '../usuario-autenticacao/permissao-administrativa.guard.js';
+import { RequirePermissaoAdministrativa } from '../usuario-autenticacao/permissao-administrativa.decorator.js';
 import { mapArtigoError } from './artigo-error.mapper.js';
 import {
   taxonomiaQuerySchema,
@@ -55,7 +56,8 @@ import {
 
 @ApiTags('Backoffice - Artigo categorias')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, ArticleContentGuard)
+@UseGuards(JwtAuthGuard, PermissaoAdministrativaGuard)
+@RequirePermissaoAdministrativa('GESTAO_CONTEUDOS')
 @Controller('backoffice/artigo-categorias')
 export class BackofficeArtigoCategoriasController {
   constructor(
@@ -148,7 +150,8 @@ export class BackofficeArtigoCategoriasController {
 
 @ApiTags('Backoffice - Artigo tags')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, ArticleContentGuard)
+@UseGuards(JwtAuthGuard, PermissaoAdministrativaGuard)
+@RequirePermissaoAdministrativa('GESTAO_CONTEUDOS')
 @Controller('backoffice/artigo-tags')
 export class BackofficeArtigoTagsController {
   constructor(

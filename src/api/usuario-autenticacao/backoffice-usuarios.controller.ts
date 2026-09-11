@@ -26,7 +26,6 @@ import {
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
-import { PERFIL_ADMINISTRATIVO_TOTAL } from '../../domain/usuario-autenticacao/entities/usuario.entity.js';
 import { CreateAdministradorUseCase } from '../../application/usuario-autenticacao/use-cases/create-administrador.use-case.js';
 import { GetUsuarioDetailsUseCase } from '../../application/usuario-autenticacao/use-cases/get-usuario-details.use-case.js';
 import { InactivateAdministradorUseCase } from '../../application/usuario-autenticacao/use-cases/inactivate-administrador.use-case.js';
@@ -35,8 +34,8 @@ import { ListUsuariosUseCase } from '../../application/usuario-autenticacao/use-
 import { UpdateAdministradorUseCase } from '../../application/usuario-autenticacao/use-cases/update-administrador.use-case.js';
 import { UpdatePacienteUseCase } from '../../application/usuario-autenticacao/use-cases/update-paciente.use-case.js';
 import { ZodValidationPipe } from '../common/zod-validation.pipe.js';
-import { RequireAdminProfiles } from './admin-profile.decorator.js';
-import { AdminProfileGuard } from './admin-profile.guard.js';
+import { RequirePermissaoAdministrativa } from './permissao-administrativa.decorator.js';
+import { PermissaoAdministrativaGuard } from './permissao-administrativa.guard.js';
 import { mapAuthError } from './auth-error.mapper.js';
 import { JwtAuthGuard } from './jwt-auth.guard.js';
 import {
@@ -61,8 +60,8 @@ import { ErrorSwaggerResponseDto } from './auth.swagger.js';
 
 @ApiTags('Backoffice - Usuários')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, AdminProfileGuard)
-@RequireAdminProfiles(PERFIL_ADMINISTRATIVO_TOTAL)
+@UseGuards(JwtAuthGuard, PermissaoAdministrativaGuard)
+@RequirePermissaoAdministrativa('GERENCIAR_USUARIOS')
 @Controller('backoffice')
 export class BackofficeUsuariosController {
   constructor(
@@ -95,13 +94,13 @@ export class BackofficeUsuariosController {
     enum: ['ATIVO', 'INATIVO', 'BLOQUEADO'],
   })
   @ApiQuery({
-    name: 'perfil',
+    name: 'permissao',
     required: false,
     enum: [
       'TOTAL',
-      'MODERADOR_DE_CONTEUDO',
-      'GERENTE_DE_APOIOS',
-      'ANALISTA_DE_INTERACOES',
+      'GERENCIAR_USUARIOS',
+      'GESTAO_CONTEUDOS',
+      'GESTAO_RADAR_APOIO',
     ],
   })
   @ApiOkResponse({
@@ -144,7 +143,7 @@ export class BackofficeUsuariosController {
   @ApiOperation({
     summary: 'Criar administrador',
     description:
-      'Cria usuário administrador pelo backoffice, associa perfis e retorna senha temporária uma única vez.',
+      'Cria usuário administrador pelo backoffice, associa permissões administrativas e retorna senha temporária uma única vez.',
   })
   @ApiCreatedResponse({
     description: 'Administrador criado com senha temporária.',
@@ -170,7 +169,7 @@ export class BackofficeUsuariosController {
   @ApiOperation({
     summary: 'Atualizar administrador',
     description:
-      'Atualiza dados cadastrais, status e perfis, preservando ao menos um administrador ativo com TOTAL.',
+      'Atualiza dados cadastrais, status e permissões administrativas, preservando ao menos um administrador ativo com TOTAL.',
   })
   @ApiOkResponse({
     description: 'Administrador atualizado.',

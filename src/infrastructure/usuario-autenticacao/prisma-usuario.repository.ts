@@ -2,13 +2,13 @@ import { randomUUID } from 'node:crypto';
 import { Prisma } from '../../generated/prisma/client.js';
 import { Usuario } from '../../domain/usuario-autenticacao/entities/usuario.entity.js';
 import type {
-  PerfilAdministrativoNome,
+  PermissaoAdministrativaNome,
   StatusUsuario,
   TipoUsuario,
 } from '../../domain/usuario-autenticacao/entities/usuario.entity.js';
 import {
-  PERFIL_ADMINISTRATIVO_TOTAL,
-  PERFIS_ADMINISTRATIVOS_CONHECIDOS,
+  PERMISSAO_ADMINISTRATIVA_TOTAL,
+  PERMISSOES_ADMINISTRATIVAS_CONHECIDAS,
 } from '../../domain/usuario-autenticacao/entities/usuario.entity.js';
 import { AuthApplicationError } from '../../application/usuario-autenticacao/errors/auth-application.error.js';
 import { DataNascimento } from '../../domain/usuario-autenticacao/value-objects/data-nascimento.value-object.js';
@@ -52,10 +52,8 @@ interface UsuarioPersistenceRecord {
     endereco?: EnderecoPersistenceRecord | null;
   } | null;
   administrador: {
-    perfis: Array<{
-      perfil: {
-        nome: string;
-      };
+    permissoes: Array<{
+      permissao: string;
     }>;
   } | null;
 }
@@ -84,11 +82,7 @@ const usuarioInclude = {
   },
   administrador: {
     include: {
-      perfis: {
-        include: {
-          perfil: true,
-        },
-      },
+      permissoes: true,
     },
   },
 } as const;
@@ -194,11 +188,9 @@ export class PrismaUsuarioRepository
           trocaSenhaObrigatoria: input.trocaSenhaObrigatoria,
           administrador: {
             create: {
-              perfis: {
-                create: input.perfisAdministrativos.map((perfil) => ({
-                  perfil: {
-                    connect: { nome: perfil },
-                  },
+              permissoes: {
+                create: input.permissoesAdministrativas.map((permissao) => ({
+                  permissao,
                 })),
               },
             },
@@ -227,16 +219,15 @@ export class PrismaUsuarioRepository
           });
         }
 
-        if (input.data.perfisAdministrativos !== undefined) {
-          await tx.administradorPerfil.deleteMany({
+        if (input.data.permissoesAdministrativas !== undefined) {
+          await tx.administradorPermissao.deleteMany({
             where: { administradorId: input.id },
           });
-          await tx.administradorPerfil.createMany({
-            data: await this.toAdministradorPerfilRows(
-              tx,
-              input.id,
-              input.data.perfisAdministrativos,
-            ),
+          await tx.administradorPermissao.createMany({
+            data: input.data.permissoesAdministrativas.map((permissao) => ({
+              administradorId: input.id,
+              permissao,
+            })),
           });
         }
 
@@ -354,11 +345,9 @@ export class PrismaUsuarioRepository
         ...(id !== undefined ? { id: { not: id } } : {}),
         administrador: {
           is: {
-            perfis: {
+            permissoes: {
               some: {
-                perfil: {
-                  nome: PERFIL_ADMINISTRATIVO_TOTAL,
-                },
+                permissao: PERMISSAO_ADMINISTRATIVA_TOTAL,
               },
             },
           },
@@ -378,9 +367,9 @@ export class PrismaUsuarioRepository
       dataNascimento: DataNascimento.create(record.dataNascimento),
       status: toStatusUsuario(record.status),
       tipo: toTipoUsuario(record),
-      perfisAdministrativos:
-        record.administrador?.perfis.map((administradorPerfil) =>
-          toPerfilAdministrativoNome(administradorPerfil.perfil.nome),
+      permissoesAdministrativas:
+        record.administrador?.permissoes.map((administradorPermissao) =>
+          toPermissaoAdministrativaNome(administradorPermissao.permissao),
         ) ?? [],
       trocaSenhaObrigatoria: record.trocaSenhaObrigatoria,
       dataCriacao: record.dataCriacao,
@@ -435,15 +424,13 @@ export class PrismaUsuarioRepository
       });
     }
 
-    if (input.perfil !== undefined) {
+    if (input.permissao !== undefined) {
       and.push({
         administrador: {
           is: {
-            perfis: {
+            permissoes: {
               some: {
-                perfil: {
-                  nome: input.perfil,
-                },
+                permissao: input.permissao,
               },
             },
           },
@@ -455,29 +442,6 @@ export class PrismaUsuarioRepository
       ...(input.status !== undefined ? { status: input.status } : {}),
       ...(and.length > 0 ? { AND: and } : {}),
     };
-  }
-
-  private async toAdministradorPerfilRows(
-    tx: PrismaTransaction,
-    administradorId: string,
-    perfisAdministrativos: PerfilAdministrativoNome[],
-  ): Promise<Array<{ administradorId: string; perfilId: string }>> {
-    const perfis = await tx.perfilAdministrativo.findMany({
-      where: { nome: { in: perfisAdministrativos } },
-      select: { id: true, nome: true },
-    });
-
-    if (perfis.length !== perfisAdministrativos.length) {
-      throw new AuthApplicationError(
-        'CONFLICT',
-        'Perfil administrativo inválido.',
-      );
-    }
-
-    return perfis.map((perfil) => ({
-      administradorId,
-      perfilId: perfil.id,
-    }));
   }
 
   private async insertEndereco(
@@ -611,14 +575,16 @@ function toTipoUsuario(record: UsuarioPersistenceRecord): TipoUsuario {
   return 'USUARIO';
 }
 
-function toPerfilAdministrativoNome(nome: string): PerfilAdministrativoNome {
-  const perfil = PERFIS_ADMINISTRATIVOS_CONHECIDOS.find(
-    (knownPerfil) => knownPerfil === nome,
+function toPermissaoAdministrativaNome(
+  nome: string,
+): PermissaoAdministrativaNome {
+  const permissao = PERMISSOES_ADMINISTRATIVAS_CONHECIDAS.find(
+    (knownPermissao) => knownPermissao === nome,
   );
 
-  if (perfil === undefined) {
-    throw new Error(`Perfil administrativo desconhecido: ${nome}`);
+  if (permissao === undefined) {
+    throw new Error(`Permissão administrativa desconhecida: ${nome}`);
   }
 
-  return perfil;
+  return permissao;
 }

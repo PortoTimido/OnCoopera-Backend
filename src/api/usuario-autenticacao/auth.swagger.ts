@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class LoginSwaggerRequestDto {
   @ApiProperty({
@@ -111,12 +111,27 @@ export class AuthenticatedUserSwaggerDto {
 
   @ApiProperty({
     description:
-      'Perfis administrativos associados ao usuário, quando existirem.',
+      'Permissões administrativas do usuário. TOTAL concede acesso irrestrito.',
+    enum: [
+      'TOTAL',
+      'GERENCIAR_USUARIOS',
+      'GESTAO_CONTEUDOS',
+      'GESTAO_RADAR_APOIO',
+    ],
+    example: ['TOTAL'],
+    isArray: true,
+  })
+  permissoesAdministrativas!: string[];
+
+  @ApiPropertyOptional({
+    description:
+      'Campo legado mantido apenas para compatibilidade de resposta durante a transição do modelo de perfis; não é utilizado para autorização e sempre espelha permissoesAdministrativas.',
     example: ['TOTAL'],
     isArray: true,
     type: String,
+    deprecated: true,
   })
-  perfisAdministrativos!: string[];
+  perfisAdministrativos?: string[];
 
   @ApiProperty({
     description: 'Indica se o usuário deve trocar senha antes de autenticar.',

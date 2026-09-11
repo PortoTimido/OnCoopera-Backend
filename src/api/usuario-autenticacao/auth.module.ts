@@ -59,7 +59,7 @@ import { NodeSecretGenerator } from '../../infrastructure/usuario-autenticacao/n
 import { PrismaAuthSessionRepository } from '../../infrastructure/usuario-autenticacao/prisma-auth-session.repository.js';
 import { PrismaUsuarioRepository } from '../../infrastructure/usuario-autenticacao/prisma-usuario.repository.js';
 import { SecureTemporaryPasswordGenerator } from '../../infrastructure/usuario-autenticacao/secure-temporary-password-generator.js';
-import { AdminProfileGuard } from './admin-profile.guard.js';
+import { PermissaoAdministrativaGuard } from './permissao-administrativa.guard.js';
 import { AuthController } from './auth.controller.js';
 import { BackofficeUsuariosController } from './backoffice-usuarios.controller.js';
 import { JwtAuthGuard } from './jwt-auth.guard.js';
@@ -276,14 +276,14 @@ import { MobilePacientesController } from './mobile-pacientes.controller.js';
       inject: [USUARIO_MANAGEMENT_REPOSITORY, AUTH_SESSION_REPOSITORY],
     },
     JwtAuthGuard,
-    AdminProfileGuard,
+    PermissaoAdministrativaGuard,
   ],
   exports: [
     ACCESS_TOKEN_SERVICE,
     AUTH_SESSION_REPOSITORY,
     USUARIO_REPOSITORY,
     JwtAuthGuard,
-    AdminProfileGuard,
+    PermissaoAdministrativaGuard,
   ],
 })
 export class AuthModule {}

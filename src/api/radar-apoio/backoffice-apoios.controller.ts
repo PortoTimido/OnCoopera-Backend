@@ -35,7 +35,8 @@ import {
 } from '../../application/radar-apoio/use-cases/apoio.use-cases.js';
 import { ZodValidationPipe } from '../common/zod-validation.pipe.js';
 import { JwtAuthGuard } from '../usuario-autenticacao/jwt-auth.guard.js';
-import { ApoioManagementGuard } from './apoio-management.guard.js';
+import { PermissaoAdministrativaGuard } from '../usuario-autenticacao/permissao-administrativa.guard.js';
+import { RequirePermissaoAdministrativa } from '../usuario-autenticacao/permissao-administrativa.decorator.js';
 import { mapApoioError } from './radar-apoio-error.mapper.js';
 import {
   createApoioSchema,
@@ -55,7 +56,8 @@ import {
 
 @ApiTags('Backoffice - Radar de Apoio')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, ApoioManagementGuard)
+@UseGuards(JwtAuthGuard, PermissaoAdministrativaGuard)
+@RequirePermissaoAdministrativa('GESTAO_RADAR_APOIO')
 @Controller('backoffice/apoios')
 export class BackofficeApoiosController {
   constructor(

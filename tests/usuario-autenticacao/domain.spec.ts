@@ -95,7 +95,7 @@ test.group('usuario-autenticacao domain', () => {
     );
   });
 
-  test('paciente não recebe perfis administrativos', ({ assert }) => {
+  test('paciente não recebe permissões administrativas', ({ assert }) => {
     const paciente = Usuario.create({
       id: 'patient-1',
       nome: Nome.create('Paciente Teste'),
@@ -108,7 +108,7 @@ test.group('usuario-autenticacao domain', () => {
       ),
       status: 'ATIVO',
       tipo: 'PACIENTE',
-      perfisAdministrativos: [],
+      permissoesAdministrativas: [],
       trocaSenhaObrigatoria: false,
       dataCriacao: new Date('2026-01-01T00:00:00.000Z'),
       dataAtualizacao: new Date('2026-01-01T00:00:00.000Z'),
@@ -116,7 +116,54 @@ test.group('usuario-autenticacao domain', () => {
     });
 
     assert.equal(paciente.toPublic().tipo, 'PACIENTE');
-    assert.deepEqual(paciente.toPublic().perfisAdministrativos, []);
+    assert.deepEqual(paciente.toPublic().permissoesAdministrativas, []);
+  });
+
+  test('hasPermissaoAdministrativa concede acesso via TOTAL ou permissão específica', ({
+    assert,
+  }) => {
+    const criarAdministrador = (
+      permissoesAdministrativas: (
+        | 'TOTAL'
+        | 'GERENCIAR_USUARIOS'
+        | 'GESTAO_CONTEUDOS'
+        | 'GESTAO_RADAR_APOIO'
+      )[],
+    ) =>
+      Usuario.create({
+        id: 'admin-1',
+        nome: Nome.create('Admin Teste'),
+        email: Email.create('admin@example.com'),
+        login: Login.create('admin.teste'),
+        senhaHash: SenhaHash.create('hashed-password'),
+        telefone: Telefone.fromString('11999998888'),
+        dataNascimento: DataNascimento.create(
+          new Date('1990-05-20T00:00:00.000Z'),
+        ),
+        status: 'ATIVO',
+        tipo: 'ADMINISTRADOR',
+        permissoesAdministrativas,
+        trocaSenhaObrigatoria: false,
+        dataCriacao: new Date('2026-01-01T00:00:00.000Z'),
+        dataAtualizacao: new Date('2026-01-01T00:00:00.000Z'),
+        ultimoAcesso: null,
+      });
+
+    const totalAdmin = criarAdministrador(['TOTAL']);
+    assert.equal(
+      totalAdmin.hasPermissaoAdministrativa('GESTAO_RADAR_APOIO'),
+      true,
+    );
+
+    const partialAdmin = criarAdministrador(['GESTAO_CONTEUDOS']);
+    assert.equal(
+      partialAdmin.hasPermissaoAdministrativa('GESTAO_CONTEUDOS'),
+      true,
+    );
+    assert.equal(
+      partialAdmin.hasPermissaoAdministrativa('GERENCIAR_USUARIOS'),
+      false,
+    );
   });
 });
 

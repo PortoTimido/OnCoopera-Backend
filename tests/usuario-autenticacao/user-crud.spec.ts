@@ -22,14 +22,16 @@ import { CreatePacienteUseCase } from '../../src/application/usuario-autenticaca
 import { InactivateAdministradorUseCase } from '../../src/application/usuario-autenticacao/use-cases/inactivate-administrador.use-case.js';
 import { InactivatePacienteUseCase } from '../../src/application/usuario-autenticacao/use-cases/inactivate-paciente.use-case.js';
 import { UpdateAdministradorUseCase } from '../../src/application/usuario-autenticacao/use-cases/update-administrador.use-case.js';
+import { normalizePermissoesAdministrativas } from '../../src/application/usuario-autenticacao/use-cases/usuario-data.mapper.js';
+import { DomainValidationError } from '../../src/domain/usuario-autenticacao/errors/domain-validation.error.js';
 import type {
-  PerfilAdministrativoNome,
+  PermissaoAdministrativaNome,
   PublicUsuario,
 } from '../../src/domain/usuario-autenticacao/entities/usuario.entity.js';
 import { AuthSession } from '../../src/domain/usuario-autenticacao/entities/auth-session.entity.js';
 
 test.group('usuario-autenticacao user CRUD application', () => {
-  test('cria administrador com senha temporária, bcrypt hash e perfis', async ({
+  test('cria administrador com senha temporária, bcrypt hash e permissão TOTAL', async ({
     assert,
   }) => {
     const usuarios = new InMemoryUsuarioManagementRepository();
@@ -45,7 +47,7 @@ test.group('usuario-autenticacao user CRUD application', () => {
       login: 'admin.total',
       telefone: '(11) 99999-8888',
       dataNascimento: new Date('1985-01-10T00:00:00.000Z'),
-      perfisAdministrativos: ['TOTAL'],
+      permissoesAdministrativas: ['TOTAL'],
     });
 
     assert.equal(output.senhaTemporaria, 'SenhaTemp!123');
@@ -54,8 +56,47 @@ test.group('usuario-autenticacao user CRUD application', () => {
       'hash-password:SenhaTemp!123',
     );
     assert.equal(usuarios.createdAdmins[0]?.trocaSenhaObrigatoria, true);
-    assert.deepEqual(output.usuario.perfisAdministrativos, ['TOTAL']);
+    assert.deepEqual(output.usuario.permissoesAdministrativas, ['TOTAL']);
     assert.equal(JSON.stringify(output).includes('senhaHash'), false);
+  });
+
+  test('cria administrador com permissões parciais', async ({ assert }) => {
+    const usuarios = new InMemoryUsuarioManagementRepository();
+    const createAdministrador = new CreateAdministradorUseCase(
+      usuarios,
+      new FakePasswordHasher(),
+      new FixedTemporaryPasswordGenerator('SenhaTemp!123'),
+    );
+
+    const output = await createAdministrador.execute({
+      nome: 'Admin Parcial',
+      email: 'admin.parcial@example.com',
+      login: 'admin.parcial',
+      telefone: '(11) 99999-8888',
+      dataNascimento: new Date('1985-01-10T00:00:00.000Z'),
+      permissoesAdministrativas: ['GERENCIAR_USUARIOS', 'GESTAO_CONTEUDOS'],
+    });
+
+    assert.sameMembers(output.usuario.permissoesAdministrativas, [
+      'GERENCIAR_USUARIOS',
+      'GESTAO_CONTEUDOS',
+    ]);
+  });
+
+  test('rejeita TOTAL combinado com outra permissão', ({ assert }) => {
+    assert.throws(
+      () => normalizePermissoesAdministrativas(['TOTAL', 'GERENCIAR_USUARIOS']),
+      DomainValidationError,
+      'A permissão TOTAL é exclusiva: não pode ser combinada com outras permissões.',
+    );
+  });
+
+  test('rejeita permissão administrativa inválida', ({ assert }) => {
+    assert.throws(
+      () => normalizePermissoesAdministrativas(['PERMISSAO_INEXISTENTE']),
+      DomainValidationError,
+      'Permissão administrativa desconhecida: PERMISSAO_INEXISTENTE.',
+    );
   });
 
   test('cria paciente mobile com endereço e sem permissões', async ({
@@ -82,7 +123,7 @@ test.group('usuario-autenticacao user CRUD application', () => {
       'hash-password:SenhaPaciente!123',
     );
     assert.equal(output.usuario.tipo, 'PACIENTE');
-    assert.deepEqual(output.usuario.perfisAdministrativos, []);
+    assert.deepEqual(output.usuario.permissoesAdministrativas, []);
     assert.equal(output.endereco?.cep, '01310930');
   });
 
@@ -91,7 +132,7 @@ test.group('usuario-autenticacao user CRUD application', () => {
       createUsuarioDetails({
         id: 'patient-1',
         tipo: 'PACIENTE',
-        perfisAdministrativos: [],
+        permissoesAdministrativas: [],
       }),
     ]);
     const sessions = new InMemoryAuthSessionRepository();
@@ -114,7 +155,7 @@ test.group('usuario-autenticacao user CRUD application', () => {
       createUsuarioDetails({
         id: 'admin-1',
         tipo: 'ADMINISTRADOR',
-        perfisAdministrativos: ['TOTAL'],
+        permissoesAdministrativas: ['TOTAL'],
       }),
     ]);
     const inactivateAdministrador = new InactivateAdministradorUseCase(
@@ -141,7 +182,7 @@ test.group('usuario-autenticacao user CRUD application', () => {
       createUsuarioDetails({
         id: 'admin-1',
         tipo: 'ADMINISTRADOR',
-        perfisAdministrativos: ['TOTAL'],
+        permissoesAdministrativas: ['TOTAL'],
       }),
     ]);
     const updateAdministrador = new UpdateAdministradorUseCase(
@@ -151,7 +192,7 @@ test.group('usuario-autenticacao user CRUD application', () => {
 
     const error = await captureError(() =>
       updateAdministrador.execute('admin-1', {
-        perfisAdministrativos: ['MODERADOR_DE_CONTEUDO'],
+        permissoesAdministrativas: ['GESTAO_CONTEUDOS'],
       }),
     );
 
@@ -181,7 +222,7 @@ function createEnderecoInput() {
 function createUsuarioDetails(input: {
   id: string;
   tipo: PublicUsuario['tipo'];
-  perfisAdministrativos: PerfilAdministrativoNome[];
+  permissoesAdministrativas: PermissaoAdministrativaNome[];
 }): UsuarioDetails {
   return {
     usuario: {
@@ -193,7 +234,8 @@ function createUsuarioDetails(input: {
       dataNascimento: new Date('1990-05-20T00:00:00.000Z'),
       status: 'ATIVO',
       tipo: input.tipo,
-      perfisAdministrativos: input.perfisAdministrativos,
+      permissoesAdministrativas: input.permissoesAdministrativas,
+      perfisAdministrativos: input.permissoesAdministrativas,
       trocaSenhaObrigatoria: false,
       ultimoAcesso: null,
     },
@@ -266,7 +308,7 @@ class InMemoryUsuarioManagementRepository implements UsuarioManagementRepository
     const details = createUsuarioDetails({
       id: 'admin-1',
       tipo: 'ADMINISTRADOR',
-      perfisAdministrativos: input.perfisAdministrativos,
+      permissoesAdministrativas: input.permissoesAdministrativas,
     });
     details.usuario.nome = input.nome;
     details.usuario.email = input.email;
@@ -293,9 +335,9 @@ class InMemoryUsuarioManagementRepository implements UsuarioManagementRepository
       usuario: {
         ...current.usuario,
         ...input.data,
-        perfisAdministrativos:
-          input.data.perfisAdministrativos ??
-          current.usuario.perfisAdministrativos,
+        permissoesAdministrativas:
+          input.data.permissoesAdministrativas ??
+          current.usuario.permissoesAdministrativas,
       },
     };
     this.details.set(input.id, updated);
@@ -311,7 +353,7 @@ class InMemoryUsuarioManagementRepository implements UsuarioManagementRepository
     const details = createUsuarioDetails({
       id: 'patient-1',
       tipo: 'PACIENTE',
-      perfisAdministrativos: [],
+      permissoesAdministrativas: [],
     });
     details.usuario.nome = input.nome;
     details.usuario.email = input.email;

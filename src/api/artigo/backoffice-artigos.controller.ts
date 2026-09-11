@@ -35,7 +35,8 @@ import { UpdateArtigoUseCase } from '../../application/artigo/use-cases/update-a
 import { ZodValidationPipe } from '../common/zod-validation.pipe.js';
 import type { AuthenticatedRequest } from '../usuario-autenticacao/auth.request.js';
 import { JwtAuthGuard } from '../usuario-autenticacao/jwt-auth.guard.js';
-import { ArticleContentGuard } from './article-content.guard.js';
+import { PermissaoAdministrativaGuard } from '../usuario-autenticacao/permissao-administrativa.guard.js';
+import { RequirePermissaoAdministrativa } from '../usuario-autenticacao/permissao-administrativa.decorator.js';
 import { mapArtigoError } from './artigo-error.mapper.js';
 import {
   createArtigoSchema,
@@ -55,7 +56,8 @@ import {
 
 @ApiTags('Backoffice - Artigos')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, ArticleContentGuard)
+@UseGuards(JwtAuthGuard, PermissaoAdministrativaGuard)
+@RequirePermissaoAdministrativa('GESTAO_CONTEUDOS')
 @Controller('backoffice/artigos')
 export class BackofficeArtigosController {
   constructor(

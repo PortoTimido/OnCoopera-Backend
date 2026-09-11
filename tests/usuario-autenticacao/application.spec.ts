@@ -307,7 +307,7 @@ function createUsuario(
     dataNascimento: DataNascimento.create(new Date('1990-05-20T00:00:00.000Z')),
     status,
     tipo: 'USUARIO',
-    perfisAdministrativos: [],
+    permissoesAdministrativas: [],
     trocaSenhaObrigatoria: options?.trocaSenhaObrigatoria ?? false,
     dataCriacao: new Date('2026-01-01T00:00:00.000Z'),
     dataAtualizacao: new Date('2026-01-01T00:00:00.000Z'),

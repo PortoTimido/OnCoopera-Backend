@@ -106,17 +106,19 @@ export class CreateAdministradorSwaggerRequestDto {
   @ApiProperty({ format: 'date', example: '1990-05-20' })
   dataNascimento!: string;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
+    description:
+      'Permissões administrativas do novo usuário. TOTAL é exclusiva e concede acesso irrestrito. Padrão: [].',
     enum: [
       'TOTAL',
-      'MODERADOR_DE_CONTEUDO',
-      'GERENTE_DE_APOIOS',
-      'ANALISTA_DE_INTERACOES',
+      'GERENCIAR_USUARIOS',
+      'GESTAO_CONTEUDOS',
+      'GESTAO_RADAR_APOIO',
     ],
     isArray: true,
     example: ['TOTAL'],
   })
-  perfisAdministrativos!: string[];
+  permissoesAdministrativas?: string[];
 }
 
 export class UpdateAdministradorSwaggerRequestDto {
@@ -145,16 +147,18 @@ export class UpdateAdministradorSwaggerRequestDto {
   status?: string;
 
   @ApiPropertyOptional({
+    description:
+      'Permissões administrativas do usuário. TOTAL é exclusiva e concede acesso irrestrito.',
     enum: [
       'TOTAL',
-      'MODERADOR_DE_CONTEUDO',
-      'GERENTE_DE_APOIOS',
-      'ANALISTA_DE_INTERACOES',
+      'GERENCIAR_USUARIOS',
+      'GESTAO_CONTEUDOS',
+      'GESTAO_RADAR_APOIO',
     ],
     isArray: true,
-    example: ['MODERADOR_DE_CONTEUDO'],
+    example: ['GESTAO_CONTEUDOS'],
   })
-  perfisAdministrativos?: string[];
+  permissoesAdministrativas?: string[];
 }
 
 export class CreateAdministradorSwaggerResponseDto extends UsuarioDetailsSwaggerDto {

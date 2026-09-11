@@ -1,5 +1,5 @@
 import type {
-  PerfilAdministrativoNome,
+  PermissaoAdministrativaNome,
   PublicUsuario,
   StatusUsuario,
   TipoUsuario,
@@ -39,7 +39,7 @@ export interface ListUsuariosInput {
   search?: string;
   tipo?: TipoUsuario;
   status?: StatusUsuario;
-  perfil?: PerfilAdministrativoNome;
+  permissao?: PermissaoAdministrativaNome;
 }
 
 export interface UsuarioBaseData {
@@ -52,7 +52,7 @@ export interface UsuarioBaseData {
 
 export interface CreateAdministradorRepositoryInput extends UsuarioBaseData {
   senhaHash: string;
-  perfisAdministrativos: PerfilAdministrativoNome[];
+  permissoesAdministrativas: PermissaoAdministrativaNome[];
   trocaSenhaObrigatoria: boolean;
 }
 
@@ -60,7 +60,7 @@ export interface UpdateAdministradorRepositoryInput {
   id: string;
   data: Partial<UsuarioBaseData> & {
     status?: StatusUsuario;
-    perfisAdministrativos?: PerfilAdministrativoNome[];
+    permissoesAdministrativas?: PermissaoAdministrativaNome[];
   };
 }
 

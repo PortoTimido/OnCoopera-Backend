@@ -4,7 +4,7 @@ import {
   type ExecutionContext,
 } from '@nestjs/common';
 import { test } from '@japa/runner';
-import { ArticleContentGuard } from '../../src/api/artigo/article-content.guard.js';
+import { PermissaoAdministrativaGuard } from '../../src/api/usuario-autenticacao/permissao-administrativa.guard.js';
 import { BackofficeArtigosController } from '../../src/api/artigo/backoffice-artigos.controller.js';
 import {
   BackofficeArtigoCategoriasController,
@@ -70,10 +70,12 @@ test.group('artigo API contracts', () => {
     assert.instanceOf(error, BadRequestException);
   });
 
-  test('guard permite TOTAL ou MODERADOR_DE_CONTEUDO e rejeita outros perfis', ({
+  test('guard permite TOTAL ou GESTAO_CONTEUDOS e rejeita outras permissões', ({
     assert,
   }) => {
-    const guard = new ArticleContentGuard();
+    const guard = new PermissaoAdministrativaGuard(
+      createReflector(['GESTAO_CONTEUDOS']),
+    );
 
     assert.equal(
       guard.canActivate(
@@ -82,7 +84,7 @@ test.group('artigo API contracts', () => {
             usuarioId: 'admin-1',
             sessaoId: 'session-1',
             tipo: 'ADMINISTRADOR',
-            perfisAdministrativos: ['TOTAL'],
+            permissoesAdministrativas: ['TOTAL'],
           },
         }),
       ),
@@ -95,7 +97,7 @@ test.group('artigo API contracts', () => {
             usuarioId: 'admin-2',
             sessaoId: 'session-2',
             tipo: 'ADMINISTRADOR',
-            perfisAdministrativos: ['MODERADOR_DE_CONTEUDO'],
+            permissoesAdministrativas: ['GESTAO_CONTEUDOS'],
           },
         }),
       ),
@@ -109,7 +111,7 @@ test.group('artigo API contracts', () => {
             usuarioId: 'admin-3',
             sessaoId: 'session-3',
             tipo: 'ADMINISTRADOR',
-            perfisAdministrativos: ['GERENTE_DE_APOIOS'],
+            permissoesAdministrativas: ['GESTAO_RADAR_APOIO'],
           },
         }),
       ),
@@ -141,7 +143,7 @@ test.group('artigo API contracts', () => {
           usuarioId: 'admin-1',
           sessaoId: 'session-1',
           tipo: 'ADMINISTRADOR',
-          perfisAdministrativos: ['TOTAL'],
+          permissoesAdministrativas: ['TOTAL'],
         },
       } as AuthenticatedRequest,
       {
@@ -208,4 +210,10 @@ function captureSyncError(fn: () => unknown): unknown {
   } catch (error) {
     return error;
   }
+}
+
+function createReflector(requiredPermissoes: string[]) {
+  return {
+    getAllAndOverride: () => requiredPermissoes,
+  } as never;
 }

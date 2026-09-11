@@ -87,7 +87,7 @@ export class JwtAuthGuard implements CanActivate {
       usuarioId: payload.sub,
       sessaoId: payload.sid,
       tipo: publicUsuario.tipo,
-      perfisAdministrativos: publicUsuario.perfisAdministrativos,
+      permissoesAdministrativas: publicUsuario.permissoesAdministrativas,
     };
 
     return true;

@@ -1,6 +1,7 @@
 import {
-  PERFIS_ADMINISTRATIVOS_CONHECIDOS,
-  type PerfilAdministrativoNome,
+  PERMISSAO_ADMINISTRATIVA_TOTAL,
+  PERMISSOES_ADMINISTRATIVAS_CONHECIDAS,
+  type PermissaoAdministrativaNome,
 } from '../../../domain/usuario-autenticacao/entities/usuario.entity.js';
 import { DomainValidationError } from '../../../domain/usuario-autenticacao/errors/domain-validation.error.js';
 import { DataNascimento } from '../../../domain/usuario-autenticacao/value-objects/data-nascimento.value-object.js';
@@ -95,28 +96,31 @@ export function normalizeEnderecoData(
   };
 }
 
-export function normalizePerfisAdministrativos(
-  perfis: string[],
-): PerfilAdministrativoNome[] {
-  if (perfis.length === 0) {
-    throw new DomainValidationError(
-      'Administrador deve possuir ao menos um perfil.',
-    );
-  }
+export function normalizePermissoesAdministrativas(
+  permissoes: string[],
+): PermissaoAdministrativaNome[] {
+  const uniquePermissoes: PermissaoAdministrativaNome[] = [];
 
-  const uniquePerfis: PerfilAdministrativoNome[] = [];
-
-  for (const perfil of new Set(perfis)) {
-    if (!isPerfilAdministrativoConhecido(perfil)) {
+  for (const permissao of new Set(permissoes)) {
+    if (!isPermissaoAdministrativaConhecida(permissao)) {
       throw new DomainValidationError(
-        `Perfil administrativo desconhecido: ${perfil}.`,
+        `Permissão administrativa desconhecida: ${permissao}.`,
       );
     }
 
-    uniquePerfis.push(perfil);
+    uniquePermissoes.push(permissao);
   }
 
-  return uniquePerfis;
+  if (
+    uniquePermissoes.includes(PERMISSAO_ADMINISTRATIVA_TOTAL) &&
+    uniquePermissoes.length > 1
+  ) {
+    throw new DomainValidationError(
+      'A permissão TOTAL é exclusiva: não pode ser combinada com outras permissões.',
+    );
+  }
+
+  return uniquePermissoes;
 }
 
 function requiredTrim(value: string, label: string): string {
@@ -133,8 +137,10 @@ function onlyDigits(value: string): string {
   return value.replace(/\D/g, '');
 }
 
-function isPerfilAdministrativoConhecido(
-  perfil: string,
-): perfil is PerfilAdministrativoNome {
-  return PERFIS_ADMINISTRATIVOS_CONHECIDOS.some((known) => known === perfil);
+function isPermissaoAdministrativaConhecida(
+  permissao: string,
+): permissao is PermissaoAdministrativaNome {
+  return PERMISSOES_ADMINISTRATIVAS_CONHECIDAS.some(
+    (known) => known === permissao,
+  );
 }

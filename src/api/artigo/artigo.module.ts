@@ -23,7 +23,6 @@ import { UpdateArtigoUseCase } from '../../application/artigo/use-cases/update-a
 import { PrismaService } from '../../infrastructure/database/prisma.service.js';
 import { PrismaArtigoRepository } from '../../infrastructure/artigo/prisma-artigo.repository.js';
 import { AuthModule } from '../usuario-autenticacao/auth.module.js';
-import { ArticleContentGuard } from './article-content.guard.js';
 import { BackofficeArtigosController } from './backoffice-artigos.controller.js';
 import {
   BackofficeArtigoCategoriasController,
@@ -47,7 +46,8 @@ import { MobileArtigosController } from './mobile-artigos.controller.js';
     },
     {
       provide: ListArtigosUseCase,
-      useFactory: (artigos: ArtigoRepository) => new ListArtigosUseCase(artigos),
+      useFactory: (artigos: ArtigoRepository) =>
+        new ListArtigosUseCase(artigos),
       inject: [ARTIGO_REPOSITORY],
     },
     {
@@ -130,7 +130,6 @@ import { MobileArtigosController } from './mobile-artigos.controller.js';
       useFactory: (artigos: ArtigoRepository) => new DeleteTagUseCase(artigos),
       inject: [ARTIGO_REPOSITORY],
     },
-    ArticleContentGuard,
   ],
 })
 export class ArtigoModule {}

@@ -6,29 +6,6 @@ import { seedApoios } from './seeders/apoios.seeder.js';
 import { seedArtigos } from './seeders/artigos.seeder.js';
 import { seedUsuarios } from './seeders/usuarios.seeder.js';
 
-const perfisAdministrativos = [
-  {
-    id: '00000000-0000-4000-8000-000000000001',
-    nome: 'TOTAL',
-    descricao: 'Acesso administrativo total ao backoffice.',
-  },
-  {
-    id: '00000000-0000-4000-8000-000000000002',
-    nome: 'MODERADOR_DE_CONTEUDO',
-    descricao: 'Moderação de conteúdo editorial.',
-  },
-  {
-    id: '00000000-0000-4000-8000-000000000003',
-    nome: 'GERENTE_DE_APOIOS',
-    descricao: 'Gestão de apoios, clínicas, ONGs e serviços.',
-  },
-  {
-    id: '00000000-0000-4000-8000-000000000004',
-    nome: 'ANALISTA_DE_INTERACOES',
-    descricao: 'Consulta e análise de interações operacionais.',
-  },
-] as const;
-
 const adminSeed = {
   nome: process.env.ADMIN_SEED_NAME ?? 'Henrique Carvalho',
   email: process.env.ADMIN_SEED_EMAIL ?? 'henrique.carvalho@oncoopera.local',
@@ -61,14 +38,6 @@ async function main(): Promise<void> {
 
   try {
     await prisma.$transaction(async (tx) => {
-      for (const perfil of perfisAdministrativos) {
-        await tx.perfilAdministrativo.upsert({
-          where: { nome: perfil.nome },
-          create: perfil,
-          update: { descricao: perfil.descricao },
-        });
-      }
-
       const usuario = await tx.usuario.upsert({
         where: { login: adminSeed.login },
         create: {
@@ -96,21 +65,15 @@ async function main(): Promise<void> {
         update: {},
       });
 
-      const perfis = await tx.perfilAdministrativo.findMany({
+      await tx.administradorPermissao.upsert({
         where: {
-          nome: {
-            in: perfisAdministrativos.map((perfil) => perfil.nome),
+          administradorId_permissao: {
+            administradorId: usuario.id,
+            permissao: 'TOTAL',
           },
         },
-        select: { id: true },
-      });
-
-      await tx.administradorPerfil.createMany({
-        data: perfis.map((perfil) => ({
-          administradorId: usuario.id,
-          perfilId: perfil.id,
-        })),
-        skipDuplicates: true,
+        create: { administradorId: usuario.id, permissao: 'TOTAL' },
+        update: {},
       });
 
       await seedUsuarios(tx, senhaHash);

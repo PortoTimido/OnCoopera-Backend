@@ -1,4 +1,4 @@
-import { PERFIL_ADMINISTRATIVO_TOTAL } from '../../../domain/usuario-autenticacao/entities/usuario.entity.js';
+import { PERMISSAO_ADMINISTRATIVA_TOTAL } from '../../../domain/usuario-autenticacao/entities/usuario.entity.js';
 import { assertRemainingTotalAdministrator } from '../../../domain/usuario-autenticacao/services/admin-full-permission-policy.js';
 import { AuthApplicationError } from '../errors/auth-application.error.js';
 import type { AuthSessionRepository } from '../ports/auth-session.repository.js';
@@ -28,8 +28,8 @@ export class InactivateAdministradorUseCase {
 
     if (
       current.usuario.status === 'ATIVO' &&
-      current.usuario.perfisAdministrativos.includes(
-        PERFIL_ADMINISTRATIVO_TOTAL,
+      current.usuario.permissoesAdministrativas.includes(
+        PERMISSAO_ADMINISTRATIVA_TOTAL,
       )
     ) {
       const remaining =

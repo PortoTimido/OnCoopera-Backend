@@ -33,6 +33,15 @@ enum StatusArtigo {
   DESATIVADO
 }
 
+enum PermissaoAdministrativa {
+  TOTAL
+  GERENCIAR_USUARIOS
+  GESTAO_CONTEUDOS
+  GESTAO_RADAR_APOIO
+
+  @@map("permissao_administrativa")
+}
+
 model Usuario {
   id                    String               @id @default(uuid()) @db.Uuid
   nome                  String
@@ -83,32 +92,21 @@ model Paciente {
 }
 
 model Administrador {
-  usuarioId String                @id @map("usuario_id") @db.Uuid
-  usuario   Usuario               @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
-  perfis    AdministradorPerfil[]
-  artigos   Artigo[]
+  usuarioId  String                   @id @map("usuario_id") @db.Uuid
+  usuario    Usuario                  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  permissoes AdministradorPermissao[]
+  artigos    Artigo[]
 
   @@map("administrador")
 }
 
-model PerfilAdministrativo {
-  id              String                @id @default(uuid()) @db.Uuid
-  nome            String                @unique
-  descricao       String
-  administradores AdministradorPerfil[]
+model AdministradorPermissao {
+  administradorId String                  @map("administrador_id") @db.Uuid
+  permissao       PermissaoAdministrativa
+  administrador   Administrador           @relation(fields: [administradorId], references: [usuarioId], onDelete: Cascade)
 
-  @@map("perfil_administrativo")
-}
-
-model AdministradorPerfil {
-  administradorId String               @map("administrador_id") @db.Uuid
-  perfilId        String               @map("perfil_id") @db.Uuid
-  administrador   Administrador        @relation(fields: [administradorId], references: [usuarioId], onDelete: Cascade)
-  perfil          PerfilAdministrativo @relation(fields: [perfilId], references: [id], onDelete: Cascade)
-
-  @@id([administradorId, perfilId])
-  @@index([perfilId])
-  @@map("administrador_perfil")
+  @@id([administradorId, permissao])
+  @@map("administrador_permissao")
 }
 
 model Endereco {
@@ -128,17 +126,17 @@ model Endereco {
 }
 
 model RegistroDiario {
-  id         String            @id @default(uuid()) @db.Uuid
-  pacienteId String            @map("paciente_id") @db.Uuid
-  dataRegistro DateTime        @map("data_registro") @db.Date
-  dataHora   DateTime          @default(now()) @map("data_hora")
-  humor      String
-  notaVozUrl String?           @map("nota_voz_url")
-  paciente   Paciente          @relation(fields: [pacienteId], references: [usuarioId], onDelete: Cascade)
-  sintomas   RegistroSintoma[]
+  id           String            @id @default(uuid()) @db.Uuid
+  pacienteId   String            @map("paciente_id") @db.Uuid
+  dataRegistro DateTime          @map("data_registro") @db.Date
+  dataHora     DateTime          @default(now()) @map("data_hora")
+  humor        String
+  notaVozUrl   String?           @map("nota_voz_url")
+  paciente     Paciente          @relation(fields: [pacienteId], references: [usuarioId], onDelete: Cascade)
+  sintomas     RegistroSintoma[]
 
-  @@index([pacienteId])
   @@unique([pacienteId, dataRegistro])
+  @@index([pacienteId])
   @@map("registro_diario")
 }
 

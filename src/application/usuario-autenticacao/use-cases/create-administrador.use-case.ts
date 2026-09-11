@@ -8,12 +8,12 @@ import type {
   UsuarioManagementRepository,
 } from '../ports/usuario-management.repository.js';
 import {
-  normalizePerfisAdministrativos,
+  normalizePermissoesAdministrativas,
   normalizeUsuarioBaseData,
 } from './usuario-data.mapper.js';
 
 export interface CreateAdministradorInput extends UsuarioBaseData {
-  perfisAdministrativos: string[];
+  permissoesAdministrativas: string[];
 }
 
 export interface CreateAdministradorOutput {
@@ -41,8 +41,8 @@ export class CreateAdministradorUseCase {
     input: CreateAdministradorInput,
   ): Promise<CreateAdministradorOutput> {
     const usuarioData = normalizeUsuarioBaseData(input);
-    const perfisAdministrativos = normalizePerfisAdministrativos(
-      input.perfisAdministrativos,
+    const permissoesAdministrativas = normalizePermissoesAdministrativas(
+      input.permissoesAdministrativas,
     );
     const senhaTemporaria = this.temporaryPasswords.generate();
 
@@ -59,7 +59,7 @@ export class CreateAdministradorUseCase {
     const created = await this.usuarios.createAdministrador({
       ...usuarioData,
       senhaHash,
-      perfisAdministrativos,
+      permissoesAdministrativas,
       trocaSenhaObrigatoria: true,
     });
 
