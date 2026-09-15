@@ -7,6 +7,7 @@ erDiagram
     USUARIO ||--o| PACIENTE : possui
     USUARIO ||--o| ADMINISTRADOR : possui
     USUARIO ||--o{ SESSAO_AUTENTICACAO : inicia
+    USUARIO ||--o{ RECUPERACAO_SENHA : solicita
     ENDERECO ||--o{ PACIENTE : atende
     PACIENTE ||--o{ REGISTRO_DIARIO : registra
     REGISTRO_DIARIO ||--o{ REGISTRO_SINTOMA : detalha
@@ -37,6 +38,39 @@ erDiagram
         datetime data_criacao
         datetime data_atualizacao
         datetime ultimo_acesso
+        datetime senha_temporaria_expira_em
+    }
+
+    RECUPERACAO_SENHA {
+        uuid id PK
+        uuid usuario_id FK
+        string codigo_hash
+        datetime expira_em
+        int tentativas
+        datetime bloqueado_em
+        datetime codigo_validado_em
+        string reset_token_hash
+        datetime reset_token_expira_em
+        datetime token_utilizado_em
+        datetime criado_em
+    }
+
+    LIMITE_RECUPERACAO_SENHA {
+        uuid id PK
+        string email_hash
+        string ip_hash
+        datetime criado_em
+    }
+
+    EMAIL_ENVIO {
+        uuid id PK
+        string tipo
+        string destinatario_mascarado
+        StatusEmailEnvio status
+        int tentativas
+        string erro_codigo
+        datetime enviado_em
+        datetime criado_em
     }
 
     SESSAO_AUTENTICACAO {
@@ -128,7 +162,7 @@ erDiagram
     APOIO_IMAGEM {
         uuid id PK
         uuid apoio_id FK
-        string imagem_url
+        string object_key
         int ordem
     }
 
@@ -138,7 +172,7 @@ erDiagram
         string titulo
         text conteudo
         int tempo_leitura_minutos
-        string imagem_url
+        string imagem_object_key
         StatusArtigo status
         datetime data_criacao
         datetime data_atualizacao
@@ -171,12 +205,16 @@ erDiagram
 - `registro_diario` possui unicidade composta em `(paciente_id, data_registro)`.
 - `horario_funcionamento` possui unicidade composta em `(apoio_id, dia_semana, horario_inicio, horario_fim)`.
 - `apoio_imagem` possui unicidade composta em `(apoio_id, ordem)`.
+- `recuperacao_senha` possui índice em `(usuario_id, criado_em)`.
+- `limite_recuperacao_senha` possui índices em `(email_hash, criado_em)` e `(ip_hash, criado_em)`.
+- `email_envio` possui índice em `(tipo, criado_em)`.
 - `artigo_categoria`, `artigo_tag` e `administrador_permissao` usam chaves primárias compostas pelas colunas indicadas no diagrama.
-- Exclusões em cascata: `usuario → sessao_autenticacao`, `usuario → paciente`, `usuario → administrador`, `administrador → administrador_permissao`, `paciente → registro_diario`, `registro_diario → registro_sintoma`, `apoio → horario_funcionamento`, `apoio → apoio_imagem`, `artigo → artigo_categoria/artigo_tag` e `categoria/tag →` suas respectivas tabelas associativas.
+- Exclusões em cascata: `usuario → sessao_autenticacao`, `usuario → recuperacao_senha`, `usuario → paciente`, `usuario → administrador`, `administrador → administrador_permissao`, `paciente → registro_diario`, `registro_diario → registro_sintoma`, `apoio → horario_funcionamento`, `apoio → apoio_imagem`, `artigo → artigo_categoria/artigo_tag` e `categoria/tag →` suas respectivas tabelas associativas.
 
 | Enum | Valores |
 | --- | --- |
 | `StatusUsuario` | `ATIVO`, `INATIVO`, `BLOQUEADO` |
+| `StatusEmailEnvio` | `PENDENTE`, `ENVIADO`, `FALHOU` |
 | `TipoApoio` | `ONG`, `CLINICA`, `TRANSPORTE`, `CASA_APOIO`, `PSICOLOGO` |
 | `StatusApoio` | `RASCUNHO`, `ATIVO`, `DESATIVADO` |
 | `StatusArtigo` | `RASCUNHO`, `PUBLICADO`, `DESATIVADO` |
