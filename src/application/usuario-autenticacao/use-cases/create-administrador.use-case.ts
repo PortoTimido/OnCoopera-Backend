@@ -43,8 +43,10 @@ export class CreateAdministradorUseCase {
     this.usuarios = usuarios;
     this.passwordHasher = passwordHasher;
     this.temporaryPasswords = temporaryPasswords;
-    this.email = email ?? ({ send: async () => 'FALHOU' } as unknown as EmailService);
-    this.config = config ?? { temporaryPasswordTtlHours: 24 } as AuthConfig;
+    this.email =
+      email ??
+      ({ send: () => Promise.resolve('FALHOU') } as unknown as EmailService);
+    this.config = config ?? ({ temporaryPasswordTtlHours: 24 } as AuthConfig);
   }
 
   async execute(
@@ -71,11 +73,22 @@ export class CreateAdministradorUseCase {
       senhaHash,
       permissoesAdministrativas,
       trocaSenhaObrigatoria: true,
-      senhaTemporariaExpiraEm: new Date(Date.now() + this.config.temporaryPasswordTtlHours * 3_600_000),
+      senhaTemporariaExpiraEm: new Date(
+        Date.now() + this.config.temporaryPasswordTtlHours * 3_600_000,
+      ),
     });
 
-    const template = adminTemporaryPasswordTemplate({ nome: created.usuario.nome, email: created.usuario.email, senha: senhaTemporaria, ttlHours: this.config.temporaryPasswordTtlHours });
-    const emailEnvio = await this.email.send({ tipo: 'ACESSO_TEMPORARIO_ADMINISTRADOR', to: created.usuario.email, ...template });
+    const template = adminTemporaryPasswordTemplate({
+      nome: created.usuario.nome,
+      email: created.usuario.email,
+      senha: senhaTemporaria,
+      ttlHours: this.config.temporaryPasswordTtlHours,
+    });
+    const emailEnvio = await this.email.send({
+      tipo: 'ACESSO_TEMPORARIO_ADMINISTRADOR',
+      to: created.usuario.email,
+      ...template,
+    });
 
     return {
       usuario: created.usuario,

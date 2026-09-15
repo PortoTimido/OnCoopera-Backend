@@ -1,7 +1,4 @@
-export type ArtigoApplicationErrorCode =
-  | 'NOT_FOUND'
-  | 'CONFLICT'
-  | 'FORBIDDEN';
+export type ArtigoApplicationErrorCode = 'NOT_FOUND' | 'CONFLICT' | 'FORBIDDEN';
 
 export class ArtigoApplicationError extends Error {
   readonly code: ArtigoApplicationErrorCode;

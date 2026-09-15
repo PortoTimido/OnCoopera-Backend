@@ -133,7 +133,10 @@ export class PrismaUsuarioRepository
   async updatePasswordHash(
     id: string,
     senhaHash: string,
-    options?: { trocaSenhaObrigatoria?: boolean; senhaTemporariaExpiraEm?: Date | null },
+    options?: {
+      trocaSenhaObrigatoria?: boolean;
+      senhaTemporariaExpiraEm?: Date | null;
+    },
   ): Promise<void> {
     await this.prisma.usuario.update({
       where: { id },

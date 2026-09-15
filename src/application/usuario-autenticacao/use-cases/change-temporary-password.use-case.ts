@@ -31,8 +31,9 @@ export class ChangeTemporaryPasswordUseCase {
     if (
       usuario === null ||
       !usuario.isActive() ||
-      !usuario.trocaSenhaObrigatoria
-      || (usuario.senhaTemporariaExpiraEm !== null && usuario.senhaTemporariaExpiraEm <= new Date())
+      !usuario.trocaSenhaObrigatoria ||
+      (usuario.senhaTemporariaExpiraEm !== null &&
+        usuario.senhaTemporariaExpiraEm <= new Date())
     ) {
       throw new AuthApplicationError(
         'INVALID_CREDENTIALS',

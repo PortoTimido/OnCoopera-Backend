@@ -15,7 +15,10 @@ export interface UsuarioRepository {
   updatePasswordHash(
     id: string,
     senhaHash: string,
-    options?: { trocaSenhaObrigatoria?: boolean; senhaTemporariaExpiraEm?: Date | null },
+    options?: {
+      trocaSenhaObrigatoria?: boolean;
+      senhaTemporariaExpiraEm?: Date | null;
+    },
   ): Promise<void>;
   updateProfile(id: string, data: OwnProfileData): Promise<PublicUsuario>;
 }

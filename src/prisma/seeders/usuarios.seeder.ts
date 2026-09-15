@@ -1,11 +1,26 @@
 import { Prisma } from '../../generated/prisma/client.js';
 
 const nomes = [
-  'Ana Beatriz Alves', 'Bruno Costa', 'Camila Ferreira', 'Daniel Gomes',
-  'Elisa Martins', 'Felipe Rocha', 'Gabriela Souza', 'Heitor Lima',
-  'Isabela Nunes', 'Joao Pedro Silva', 'Karina Barros', 'Lucas Ribeiro',
-  'Mariana Dias', 'Nicolas Freitas', 'Olivia Teixeira', 'Paulo Henrique',
-  'Quezia Araujo', 'Rafael Mendes', 'Sofia Carvalho', 'Tiago Moreira',
+  'Ana Beatriz Alves',
+  'Bruno Costa',
+  'Camila Ferreira',
+  'Daniel Gomes',
+  'Elisa Martins',
+  'Felipe Rocha',
+  'Gabriela Souza',
+  'Heitor Lima',
+  'Isabela Nunes',
+  'Joao Pedro Silva',
+  'Karina Barros',
+  'Lucas Ribeiro',
+  'Mariana Dias',
+  'Nicolas Freitas',
+  'Olivia Teixeira',
+  'Paulo Henrique',
+  'Quezia Araujo',
+  'Rafael Mendes',
+  'Sofia Carvalho',
+  'Tiago Moreira',
 ] as const;
 
 export async function seedUsuarios(

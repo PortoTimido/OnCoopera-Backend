@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { EMAIL_PROVIDER } from '../../application/email/email-provider.js';
+import type { EmailProvider } from '../../application/email/email-provider.js';
 import {
   EMAIL_SERVICE,
   EmailService,
@@ -18,7 +19,7 @@ import { createEmailConfig, SmtpEmailProvider } from './smtp-email.provider.js';
     },
     {
       provide: EMAIL_SERVICE,
-      useFactory: (provider, prisma: PrismaService) =>
+      useFactory: (provider: EmailProvider, prisma: PrismaService) =>
         new EmailService(provider, new PrismaEmailAuditRepository(prisma)),
       inject: [EMAIL_PROVIDER, PrismaService],
     },

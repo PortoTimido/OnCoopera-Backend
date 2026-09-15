@@ -74,8 +74,12 @@ export class Usuario {
     return this.props.senhaHash;
   }
 
-  get email(): string { return this.props.email.value; }
-  get nome(): string { return this.props.nome.value; }
+  get email(): string {
+    return this.props.email.value;
+  }
+  get nome(): string {
+    return this.props.nome.value;
+  }
 
   get status(): StatusUsuario {
     return this.props.status;

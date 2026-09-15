@@ -18,13 +18,34 @@ export function createAuthConfigFromEnv(env: NodeJS.ProcessEnv): AuthConfig {
     ),
     refreshTokenTtlDays: parsePositiveInteger(env.REFRESH_TOKEN_TTL_DAYS, 7),
     cookieSecure: env.AUTH_COOKIE_SECURE === 'true',
-    temporaryPasswordTtlHours: parsePositiveInteger(env.TEMPORARY_PASSWORD_TTL_HOURS, 24),
-    passwordRecoveryCodeTtlMinutes: parsePositiveInteger(env.PASSWORD_RECOVERY_CODE_TTL_MINUTES, 10),
-    passwordRecoveryResetTokenTtlMinutes: parsePositiveInteger(env.PASSWORD_RECOVERY_RESET_TOKEN_TTL_MINUTES, 15),
-    passwordRecoveryMaxAttempts: parsePositiveInteger(env.PASSWORD_RECOVERY_MAX_ATTEMPTS, 5),
-    passwordRecoveryResendIntervalSeconds: parsePositiveInteger(env.PASSWORD_RECOVERY_RESEND_INTERVAL_SECONDS, 60),
-    passwordRecoveryRateLimitWindowMinutes: parsePositiveInteger(env.PASSWORD_RECOVERY_RATE_LIMIT_WINDOW_MINUTES, 15),
-    passwordRecoveryRateLimitMaxRequests: parsePositiveInteger(env.PASSWORD_RECOVERY_RATE_LIMIT_MAX_REQUESTS, 5),
+    temporaryPasswordTtlHours: parsePositiveInteger(
+      env.TEMPORARY_PASSWORD_TTL_HOURS,
+      24,
+    ),
+    passwordRecoveryCodeTtlMinutes: parsePositiveInteger(
+      env.PASSWORD_RECOVERY_CODE_TTL_MINUTES,
+      10,
+    ),
+    passwordRecoveryResetTokenTtlMinutes: parsePositiveInteger(
+      env.PASSWORD_RECOVERY_RESET_TOKEN_TTL_MINUTES,
+      15,
+    ),
+    passwordRecoveryMaxAttempts: parsePositiveInteger(
+      env.PASSWORD_RECOVERY_MAX_ATTEMPTS,
+      5,
+    ),
+    passwordRecoveryResendIntervalSeconds: parsePositiveInteger(
+      env.PASSWORD_RECOVERY_RESEND_INTERVAL_SECONDS,
+      60,
+    ),
+    passwordRecoveryRateLimitWindowMinutes: parsePositiveInteger(
+      env.PASSWORD_RECOVERY_RATE_LIMIT_WINDOW_MINUTES,
+      15,
+    ),
+    passwordRecoveryRateLimitMaxRequests: parsePositiveInteger(
+      env.PASSWORD_RECOVERY_RATE_LIMIT_MAX_REQUESTS,
+      5,
+    ),
   };
 }
 

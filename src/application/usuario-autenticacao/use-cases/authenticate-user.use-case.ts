@@ -73,8 +73,14 @@ export class AuthenticateUserUseCase {
     }
 
     if (usuario.trocaSenhaObrigatoria) {
-      if (usuario.senhaTemporariaExpiraEm !== null && usuario.senhaTemporariaExpiraEm <= new Date()) {
-        throw new AuthApplicationError('INVALID_CREDENTIALS', 'Credenciais inválidas.');
+      if (
+        usuario.senhaTemporariaExpiraEm !== null &&
+        usuario.senhaTemporariaExpiraEm <= new Date()
+      ) {
+        throw new AuthApplicationError(
+          'INVALID_CREDENTIALS',
+          'Credenciais inválidas.',
+        );
       }
       throw new AuthApplicationError(
         'PASSWORD_CHANGE_REQUIRED',
