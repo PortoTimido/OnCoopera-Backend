@@ -50,7 +50,7 @@ export class ArtigoSwaggerDto {
 
   @ApiProperty({
     nullable: true,
-    example: 'https://cdn.example.com/artigos/consulta.jpg',
+    example: 'https://minio.example.com/oncoopera-images/...?...',
   })
   imagemUrl!: string | null;
 
@@ -104,12 +104,6 @@ export class CreateArtigoSwaggerRequestDto {
   tempoLeituraMinutos!: number;
 
   @ApiPropertyOptional({
-    nullable: true,
-    example: 'https://cdn.example.com/artigos/consulta.jpg',
-  })
-  imagemUrl?: string | null;
-
-  @ApiPropertyOptional({
     enum: ['RASCUNHO', 'PUBLICADO', 'DESATIVADO'],
     example: 'RASCUNHO',
   })
@@ -139,12 +133,6 @@ export class UpdateArtigoSwaggerRequestDto {
 
   @ApiPropertyOptional({ example: 4 })
   tempoLeituraMinutos?: number;
-
-  @ApiPropertyOptional({
-    nullable: true,
-    example: 'https://cdn.example.com/artigos/consulta.jpg',
-  })
-  imagemUrl?: string | null;
 
   @ApiPropertyOptional({
     enum: ['RASCUNHO', 'PUBLICADO', 'DESATIVADO'],

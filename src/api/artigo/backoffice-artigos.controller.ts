@@ -1,5 +1,6 @@
 import {
   Body,
+  BadRequestException,
   Controller,
   Delete,
   Get,
@@ -11,11 +12,15 @@ import {
   Query,
   Req,
   UseGuards,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
   ApiBody,
+  ApiConsumes,
   ApiConflictResponse,
   ApiCreatedResponse,
   ApiForbiddenResponse,
@@ -32,6 +37,11 @@ import { DeleteArtigoUseCase } from '../../application/artigo/use-cases/delete-a
 import { GetArtigoDetailsUseCase } from '../../application/artigo/use-cases/get-artigo-details.use-case.js';
 import { ListArtigosUseCase } from '../../application/artigo/use-cases/list-artigos.use-case.js';
 import { UpdateArtigoUseCase } from '../../application/artigo/use-cases/update-artigo.use-case.js';
+import {
+  DeleteArtigoImagemUseCase,
+  UploadArtigoImagemUseCase,
+} from '../../application/artigo/use-cases/manage-artigo-imagem.use-cases.js';
+import type { UploadableImage } from '../../application/armazenamento-imagem/image-storage.port.js';
 import { ZodValidationPipe } from '../common/zod-validation.pipe.js';
 import type { AuthenticatedRequest } from '../usuario-autenticacao/auth.request.js';
 import { JwtAuthGuard } from '../usuario-autenticacao/jwt-auth.guard.js';
@@ -66,6 +76,8 @@ export class BackofficeArtigosController {
     private readonly createArtigo: CreateArtigoUseCase,
     private readonly updateArtigo: UpdateArtigoUseCase,
     private readonly deleteArtigo: DeleteArtigoUseCase,
+    private readonly uploadImagem: UploadArtigoImagemUseCase,
+    private readonly deleteImagem: DeleteArtigoImagemUseCase,
   ) {}
 
   @Get()
@@ -165,6 +177,54 @@ export class BackofficeArtigosController {
     }
   }
 
+  @Post(':id/imagem')
+  @UseInterceptors(FileInterceptor('imagem', { limits: { files: 1 } }))
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({ summary: 'Enviar ou substituir imagem de capa do artigo' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['imagem'],
+      properties: { imagem: { type: 'string', format: 'binary' } },
+    },
+  })
+  @ApiOkResponse({
+    description: 'Imagem de capa salva.',
+    type: ArtigoSwaggerDto,
+  })
+  @ApiBadRequestResponse({ type: ErrorSwaggerResponseDto })
+  @ApiUnauthorizedResponse({ type: ErrorSwaggerResponseDto })
+  @ApiForbiddenResponse({ type: ErrorSwaggerResponseDto })
+  @ApiNotFoundResponse({ type: ErrorSwaggerResponseDto })
+  async uploadCover(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @UploadedFile() image?: UploadableImage,
+  ) {
+    try {
+      return await this.uploadImagem.execute(id, requiredImage(image));
+    } catch (error) {
+      throw mapArtigoError(error);
+    }
+  }
+
+  @Delete(':id/imagem')
+  @HttpCode(204)
+  @ApiOperation({ summary: 'Excluir imagem de capa do artigo' })
+  @ApiNoContentResponse({ description: 'Imagem de capa excluÃ­da.' })
+  @ApiBadRequestResponse({ type: ErrorSwaggerResponseDto })
+  @ApiUnauthorizedResponse({ type: ErrorSwaggerResponseDto })
+  @ApiForbiddenResponse({ type: ErrorSwaggerResponseDto })
+  @ApiNotFoundResponse({ type: ErrorSwaggerResponseDto })
+  async deleteCover(
+    @Param('id', new ParseUUIDPipe()) id: string,
+  ): Promise<void> {
+    try {
+      await this.deleteImagem.execute(id);
+    } catch (error) {
+      throw mapArtigoError(error);
+    }
+  }
+
   @Delete(':id')
   @HttpCode(204)
   @ApiOperation({
@@ -183,4 +243,9 @@ export class BackofficeArtigosController {
       throw mapArtigoError(error);
     }
   }
+}
+
+function requiredImage(image?: UploadableImage): UploadableImage {
+  if (image === undefined) throw new BadRequestException('Envie uma imagem.');
+  return image;
 }

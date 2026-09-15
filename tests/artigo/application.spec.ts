@@ -81,7 +81,7 @@ test.group('artigo application', () => {
 
   test('desativa artigo sem remover registro', async ({ assert }) => {
     const repository = new InMemoryArtigoRepository();
-    const deleteArtigo = new DeleteArtigoUseCase(repository);
+    const deleteArtigo = new DeleteArtigoUseCase(repository, new NoopImageStorage());
 
     await deleteArtigo.execute('artigo-1');
 
@@ -211,13 +211,20 @@ class InMemoryArtigoRepository implements ArtigoRepository {
     return updated;
   }
 
-  async desativarArtigo(id: string): Promise<void> {
+  async findImagemObjectKey(): Promise<string | null> {
+    return null;
+  }
+
+  async setImagemObjectKey(): Promise<void> {}
+
+  async desativarArtigo(id: string): Promise<string | null> {
     this.deletedIds.push(id);
     const current = this.items.get(id);
 
     if (current !== undefined) {
       this.items.set(id, { ...current, status: 'DESATIVADO' });
     }
+    return null;
   }
 
   async listCategorias(): Promise<PublicTaxonomia[]> {
@@ -262,6 +269,18 @@ class InMemoryArtigoRepository implements ArtigoRepository {
   }
 
   async deleteTag(): Promise<void> {}
+}
+
+class NoopImageStorage {
+  async upload() {
+    throw new Error('NÃ£o utilizado neste teste.');
+  }
+
+  async remove(): Promise<void> {}
+
+  async getTemporaryUrl() {
+    throw new Error('NÃ£o utilizado neste teste.');
+  }
 }
 
 function createArtigo(overrides: Partial<PublicArtigo> = {}): PublicArtigo {

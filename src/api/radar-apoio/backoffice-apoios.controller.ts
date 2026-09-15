@@ -1,5 +1,6 @@
 import {
   Body,
+  BadRequestException,
   Controller,
   Delete,
   Get,
@@ -10,11 +11,15 @@ import {
   Post,
   Query,
   UseGuards,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
   ApiBody,
+  ApiConsumes,
   ApiConflictResponse,
   ApiCreatedResponse,
   ApiForbiddenResponse,
@@ -33,6 +38,12 @@ import {
   ListApoiosUseCase,
   UpdateApoioUseCase,
 } from '../../application/radar-apoio/use-cases/apoio.use-cases.js';
+import {
+  DeleteApoioImagemUseCase,
+  ReplaceApoioImagemUseCase,
+  UploadApoioImagemUseCase,
+} from '../../application/radar-apoio/use-cases/manage-apoio-imagem.use-cases.js';
+import type { UploadableImage } from '../../application/armazenamento-imagem/image-storage.port.js';
 import { ZodValidationPipe } from '../common/zod-validation.pipe.js';
 import { JwtAuthGuard } from '../usuario-autenticacao/jwt-auth.guard.js';
 import { PermissaoAdministrativaGuard } from '../usuario-autenticacao/permissao-administrativa.guard.js';
@@ -66,6 +77,9 @@ export class BackofficeApoiosController {
     private readonly createApoio: CreateApoioUseCase,
     private readonly updateApoio: UpdateApoioUseCase,
     private readonly deactivateApoio: DeactivateApoioUseCase,
+    private readonly uploadImagem: UploadApoioImagemUseCase,
+    private readonly replaceImagem: ReplaceApoioImagemUseCase,
+    private readonly deleteImagem: DeleteApoioImagemUseCase,
   ) {}
 
   @Get()
@@ -159,6 +173,84 @@ export class BackofficeApoiosController {
     }
   }
 
+  @Post(':id/imagens')
+  @UseInterceptors(FileInterceptor('imagem', { limits: { files: 1 } }))
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({ summary: 'Adicionar imagem ao apoio' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['imagem'],
+      properties: { imagem: { type: 'string', format: 'binary' } },
+    },
+  })
+  @ApiOkResponse({ description: 'Imagem adicionada.', type: ApoioSwaggerDto })
+  @ApiBadRequestResponse({ type: ErrorSwaggerResponseDto })
+  @ApiUnauthorizedResponse({ type: ErrorSwaggerResponseDto })
+  @ApiForbiddenResponse({ type: ErrorSwaggerResponseDto })
+  @ApiNotFoundResponse({ type: ErrorSwaggerResponseDto })
+  async uploadImage(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @UploadedFile() image?: UploadableImage,
+  ) {
+    try {
+      return await this.uploadImagem.execute(id, requiredImage(image));
+    } catch (error) {
+      throw mapApoioError(error);
+    }
+  }
+
+  @Patch(':id/imagens/:imagemId')
+  @UseInterceptors(FileInterceptor('imagem', { limits: { files: 1 } }))
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({ summary: 'Substituir imagem de um apoio' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['imagem'],
+      properties: { imagem: { type: 'string', format: 'binary' } },
+    },
+  })
+  @ApiOkResponse({ description: 'Imagem substituÃ­da.', type: ApoioSwaggerDto })
+  @ApiBadRequestResponse({ type: ErrorSwaggerResponseDto })
+  @ApiUnauthorizedResponse({ type: ErrorSwaggerResponseDto })
+  @ApiForbiddenResponse({ type: ErrorSwaggerResponseDto })
+  @ApiNotFoundResponse({ type: ErrorSwaggerResponseDto })
+  async replaceImage(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Param('imagemId', new ParseUUIDPipe()) imagemId: string,
+    @UploadedFile() image?: UploadableImage,
+  ) {
+    try {
+      return await this.replaceImagem.execute(
+        id,
+        imagemId,
+        requiredImage(image),
+      );
+    } catch (error) {
+      throw mapApoioError(error);
+    }
+  }
+
+  @Delete(':id/imagens/:imagemId')
+  @HttpCode(204)
+  @ApiOperation({ summary: 'Excluir imagem de um apoio' })
+  @ApiNoContentResponse({ description: 'Imagem excluÃ­da.' })
+  @ApiBadRequestResponse({ type: ErrorSwaggerResponseDto })
+  @ApiUnauthorizedResponse({ type: ErrorSwaggerResponseDto })
+  @ApiForbiddenResponse({ type: ErrorSwaggerResponseDto })
+  @ApiNotFoundResponse({ type: ErrorSwaggerResponseDto })
+  async deleteImage(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Param('imagemId', new ParseUUIDPipe()) imagemId: string,
+  ): Promise<void> {
+    try {
+      await this.deleteImagem.execute(id, imagemId);
+    } catch (error) {
+      throw mapApoioError(error);
+    }
+  }
+
   @Delete(':id')
   @HttpCode(204)
   @ApiOperation({
@@ -177,4 +269,9 @@ export class BackofficeApoiosController {
       throw mapApoioError(error);
     }
   }
+}
+
+function requiredImage(image?: UploadableImage): UploadableImage {
+  if (image === undefined) throw new BadRequestException('Envie uma imagem.');
+  return image;
 }

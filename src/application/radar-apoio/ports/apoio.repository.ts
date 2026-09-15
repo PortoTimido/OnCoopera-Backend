@@ -14,7 +14,6 @@ export interface ApoioWriteInput {
   status: StatusApoio;
   endereco: EnderecoApoio;
   horarios: HorarioApoio[];
-  imagensUrl: string[];
 }
 export interface ListApoiosInput {
   page: number;
@@ -39,5 +38,16 @@ export interface ApoioRepository {
   findById(id: string, onlyActive?: boolean): Promise<PublicApoio | null>;
   create(input: ApoioWriteInput): Promise<PublicApoio>;
   update(id: string, input: Partial<ApoioWriteInput>): Promise<PublicApoio>;
-  deactivate(id: string): Promise<void>;
+  addImagem(apoioId: string, objectKey: string): Promise<void>;
+  findImagemObjectKey(
+    apoioId: string,
+    imagemId: string,
+  ): Promise<string | null>;
+  replaceImagem(
+    apoioId: string,
+    imagemId: string,
+    objectKey: string,
+  ): Promise<void>;
+  removeImagem(apoioId: string, imagemId: string): Promise<string | null>;
+  deactivateAndRemoveImagens(id: string): Promise<string[]>;
 }

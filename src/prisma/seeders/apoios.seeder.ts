@@ -1,10 +1,26 @@
 import { Prisma } from '../../generated/prisma/client.js';
 
 const apoios = [
-  ['Casa Acolher', 'CASA_APOIO'], ['Instituto Viver Bem', 'ONG'], ['Clinica Esperanca', 'CLINICA'], ['Transporte Solidario', 'TRANSPORTE'], ['Psicologia em Rede', 'PSICOLOGO'],
-  ['Casa Recomeçar', 'CASA_APOIO'], ['Associacao Bracos Abertos', 'ONG'], ['Clinica Horizonte', 'CLINICA'], ['Vai Comigo', 'TRANSPORTE'], ['Escuta Psicologica', 'PSICOLOGO'],
-  ['Casa do Cuidado', 'CASA_APOIO'], ['Instituto Florescer', 'ONG'], ['Clinica Vida Plena', 'CLINICA'], ['Rota de Apoio', 'TRANSPORTE'], ['Espaco Acolhimento', 'PSICOLOGO'],
-  ['Lar de Passagem', 'CASA_APOIO'], ['ONG Caminhos', 'ONG'], ['Clinica Integrar', 'CLINICA'], ['Mobilidade Amiga', 'TRANSPORTE'], ['Nucleo de Escuta', 'PSICOLOGO'],
+  ['Casa Acolher', 'CASA_APOIO'],
+  ['Instituto Viver Bem', 'ONG'],
+  ['Clinica Esperanca', 'CLINICA'],
+  ['Transporte Solidario', 'TRANSPORTE'],
+  ['Psicologia em Rede', 'PSICOLOGO'],
+  ['Casa Recomeçar', 'CASA_APOIO'],
+  ['Associacao Bracos Abertos', 'ONG'],
+  ['Clinica Horizonte', 'CLINICA'],
+  ['Vai Comigo', 'TRANSPORTE'],
+  ['Escuta Psicologica', 'PSICOLOGO'],
+  ['Casa do Cuidado', 'CASA_APOIO'],
+  ['Instituto Florescer', 'ONG'],
+  ['Clinica Vida Plena', 'CLINICA'],
+  ['Rota de Apoio', 'TRANSPORTE'],
+  ['Espaco Acolhimento', 'PSICOLOGO'],
+  ['Lar de Passagem', 'CASA_APOIO'],
+  ['ONG Caminhos', 'ONG'],
+  ['Clinica Integrar', 'CLINICA'],
+  ['Mobilidade Amiga', 'TRANSPORTE'],
+  ['Nucleo de Escuta', 'PSICOLOGO'],
 ] as const;
 
 export async function seedApoios(tx: Prisma.TransactionClient): Promise<void> {
@@ -12,7 +28,8 @@ export async function seedApoios(tx: Prisma.TransactionClient): Promise<void> {
     const sequence = String(index + 1).padStart(2, '0');
     const id = `30000000-0000-4000-8000-0000000000${sequence}`;
     const enderecoId = `31000000-0000-4000-8000-0000000000${sequence}`;
-    const statusAdministrativo = index === 18 ? 'RASCUNHO' : index === 19 ? 'DESATIVADO' : 'ATIVO';
+    const statusAdministrativo =
+      index === 18 ? 'RASCUNHO' : index === 19 ? 'DESATIVADO' : 'ATIVO';
 
     await tx.$executeRaw`
       INSERT INTO "endereco" ("id", "cep", "logradouro", "numero", "complemento", "bairro", "cidade", "estado", "localizacao_postgis")
@@ -21,10 +38,32 @@ export async function seedApoios(tx: Prisma.TransactionClient): Promise<void> {
     `;
     await tx.apoio.upsert({
       where: { id },
-      create: { id, enderecoId, nome, tipoApoio, telefone: `113000${String(index + 1).padStart(4, '0')}`, descricao: `Servico de ${nome} para pessoas em tratamento e seus familiares.`, statusAdministrativo },
-      update: { enderecoId, nome, tipoApoio, telefone: `113000${String(index + 1).padStart(4, '0')}`, descricao: `Servico de ${nome} para pessoas em tratamento e seus familiares.`, statusAdministrativo },
+      create: {
+        id,
+        enderecoId,
+        nome,
+        tipoApoio,
+        telefone: `113000${String(index + 1).padStart(4, '0')}`,
+        descricao: `Servico de ${nome} para pessoas em tratamento e seus familiares.`,
+        statusAdministrativo,
+      },
+      update: {
+        enderecoId,
+        nome,
+        tipoApoio,
+        telefone: `113000${String(index + 1).padStart(4, '0')}`,
+        descricao: `Servico de ${nome} para pessoas em tratamento e seus familiares.`,
+        statusAdministrativo,
+      },
     });
-    await tx.horarioFuncionamento.createMany({ data: [1, 2, 3, 4, 5].map((diaSemana) => ({ apoioId: id, diaSemana, horarioInicio: new Date('1970-01-01T09:00:00.000Z'), horarioFim: new Date('1970-01-01T18:00:00.000Z') })), skipDuplicates: true });
-    await tx.apoioImagem.createMany({ data: [{ apoioId: id, imagemUrl: `https://images.oncoopera.local/apoios/${sequence}.jpg`, ordem: 0 }], skipDuplicates: true });
+    await tx.horarioFuncionamento.createMany({
+      data: [1, 2, 3, 4, 5].map((diaSemana) => ({
+        apoioId: id,
+        diaSemana,
+        horarioInicio: new Date('1970-01-01T09:00:00.000Z'),
+        horarioFim: new Date('1970-01-01T18:00:00.000Z'),
+      })),
+      skipDuplicates: true,
+    });
   }
 }

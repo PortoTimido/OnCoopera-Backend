@@ -1,6 +1,5 @@
 import { randomUUID } from 'node:crypto';
 import { Prisma } from '../../generated/prisma/client.js';
-import { ApoioApplicationError } from '../../application/radar-apoio/errors/apoio-application.error.js';
 import type {
   ApoioRepository,
   ApoioWriteInput,
@@ -14,6 +13,7 @@ import {
   type PublicApoio,
 } from '../../domain/radar-apoio/entities/apoio.entity.js';
 import { PrismaService } from '../database/prisma.service.js';
+import type { ImageStorage } from '../../application/armazenamento-imagem/image-storage.port.js';
 
 type AddressRow = Omit<EnderecoApoio, 'id'> & {
   id: string;
@@ -30,7 +30,10 @@ const include = {
 type ApoioRecord = Prisma.ApoioGetPayload<{ include: typeof include }>;
 
 export class PrismaApoioRepository implements ApoioRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly storage: ImageStorage,
+  ) {}
   async list(input: ListApoiosInput): Promise<PaginatedApoios> {
     const where = {
       ...(input.onlyActive ? { statusAdministrativo: 'ATIVO' as const } : {}),
@@ -111,12 +114,6 @@ export class PrismaApoioRepository implements ApoioRepository {
               horarioFim: time(item.horarioFim),
             })),
           },
-          imagens: {
-            create: input.imagensUrl.map((imagemUrl, ordem) => ({
-              imagemUrl,
-              ordem,
-            })),
-          },
         },
       });
     });
@@ -161,23 +158,67 @@ export class PrismaApoioRepository implements ApoioRepository {
           })),
         });
       }
-      if (input.imagensUrl) {
-        await tx.apoioImagem.deleteMany({ where: { apoioId: id } });
-        await tx.apoioImagem.createMany({
-          data: input.imagensUrl.map((imagemUrl, ordem) => ({
-            apoioId: id,
-            imagemUrl,
-            ordem,
-          })),
-        });
-      }
     });
     return (await this.findById(id))!;
   }
-  async deactivate(id: string): Promise<void> {
-    await this.prisma.apoio.update({
-      where: { id },
-      data: { statusAdministrativo: 'DESATIVADO' },
+  async addImagem(apoioId: string, objectKey: string): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      const last = await tx.apoioImagem.findFirst({
+        where: { apoioId },
+        orderBy: { ordem: 'desc' },
+        select: { ordem: true },
+      });
+      await tx.apoioImagem.create({
+        data: { apoioId, objectKey, ordem: (last?.ordem ?? -1) + 1 },
+      });
+    });
+  }
+  async findImagemObjectKey(
+    apoioId: string,
+    imagemId: string,
+  ): Promise<string | null> {
+    const image = await this.prisma.apoioImagem.findFirst({
+      where: { id: imagemId, apoioId },
+      select: { objectKey: true },
+    });
+    return image?.objectKey ?? null;
+  }
+  async replaceImagem(
+    apoioId: string,
+    imagemId: string,
+    objectKey: string,
+  ): Promise<void> {
+    await this.prisma.apoioImagem.updateMany({
+      where: { id: imagemId, apoioId },
+      data: { objectKey },
+    });
+  }
+  async removeImagem(
+    apoioId: string,
+    imagemId: string,
+  ): Promise<string | null> {
+    return this.prisma.$transaction(async (tx) => {
+      const image = await tx.apoioImagem.findFirst({
+        where: { id: imagemId, apoioId },
+        select: { objectKey: true },
+      });
+      if (!image) return null;
+      await tx.apoioImagem.delete({ where: { id: imagemId } });
+      return image.objectKey;
+    });
+  }
+  async deactivateAndRemoveImagens(id: string): Promise<string[]> {
+    return this.prisma.$transaction(async (tx) => {
+      const imagens = await tx.apoioImagem.findMany({
+        where: { apoioId: id },
+        select: { objectKey: true },
+      });
+      await tx.apoio.update({
+        where: { id },
+        data: { statusAdministrativo: 'DESATIVADO' },
+      });
+      await tx.apoioImagem.deleteMany({ where: { apoioId: id } });
+      return imagens.map((image) => image.objectKey);
     });
   }
   private async toPublic(
@@ -197,6 +238,13 @@ export class PrismaApoioRepository implements ApoioRepository {
       latitude === undefined || longitude === undefined
         ? undefined
         : await this.distanceKm(record.endereco.id, latitude, longitude);
+    const imagens = await Promise.all(
+      record.imagens.map(async (item) => ({
+        id: item.id,
+        url: await this.storage.getTemporaryUrl(item.objectKey),
+        ordem: item.ordem,
+      })),
+    );
     return {
       id: record.id,
       nome: record.nome,
@@ -206,7 +254,8 @@ export class PrismaApoioRepository implements ApoioRepository {
       status: record.statusAdministrativo,
       endereco,
       horarios,
-      imagensUrl: record.imagens.map((item) => item.imagemUrl),
+      imagensUrl: imagens.map((imagem) => imagem.url),
+      imagens,
       dataCriacao: record.dataCriacao,
       dataAtualizacao: record.dataAtualizacao,
       estaAbertoAgora: isOpenNow(horarios),
@@ -217,7 +266,7 @@ export class PrismaApoioRepository implements ApoioRepository {
     const rows = await this.prisma.$queryRaw<
       AddressRow[]
     >`SELECT "id", "cep", "logradouro", "numero", "complemento", "bairro", "cidade", "estado", ST_Y("localizacao_postgis") AS "latitude", ST_X("localizacao_postgis") AS "longitude" FROM "endereco" WHERE "id" = ${id}::uuid`;
-    const row = rows[0]!;
+    const row = rows[0];
     return row;
   }
   private async distanceKm(
@@ -228,7 +277,7 @@ export class PrismaApoioRepository implements ApoioRepository {
     const rows = await this.prisma.$queryRaw<
       { distance: number }[]
     >`SELECT ST_DistanceSphere("localizacao_postgis", ST_SetSRID(ST_MakePoint(${longitude}, ${latitude}), 4326)) / 1000 AS "distance" FROM "endereco" WHERE "id" = ${id}::uuid`;
-    return Number(rows[0]!.distance.toFixed(2));
+    return Number(rows[0].distance.toFixed(2));
   }
   private async insertAddress(
     tx: Prisma.TransactionClient,

@@ -48,6 +48,20 @@ export class HorarioApoioSwaggerDto {
   horarioFim!: string;
 }
 
+export class ApoioImagemSwaggerDto {
+  @ApiProperty({ format: 'uuid' })
+  id!: string;
+
+  @ApiProperty({
+    example:
+      'https://minio.example.com/oncoopera-images/...?X-Amz-Signature=...',
+  })
+  url!: string;
+
+  @ApiProperty({ example: 0 })
+  ordem!: number;
+}
+
 export class ApoioSwaggerDto {
   @ApiProperty({
     format: 'uuid',
@@ -87,6 +101,9 @@ export class ApoioSwaggerDto {
     example: ['https://cdn.example.com/apoios/casa-esperanca.jpg'],
   })
   imagensUrl!: string[];
+
+  @ApiProperty({ type: ApoioImagemSwaggerDto, isArray: true })
+  imagens!: ApoioImagemSwaggerDto[];
 
   @ApiProperty({ format: 'date-time' })
   dataCriacao!: Date;
@@ -148,12 +165,6 @@ export class CreateApoioSwaggerRequestDto {
 
   @ApiProperty({ type: HorarioApoioSwaggerDto, isArray: true })
   horarios!: HorarioApoioSwaggerDto[];
-
-  @ApiPropertyOptional({
-    isArray: true,
-    example: ['https://cdn.example.com/apoios/casa-esperanca.jpg'],
-  })
-  imagensUrl?: string[];
 }
 
 export class UpdateApoioSwaggerRequestDto {
@@ -186,10 +197,4 @@ export class UpdateApoioSwaggerRequestDto {
 
   @ApiPropertyOptional({ type: HorarioApoioSwaggerDto, isArray: true })
   horarios?: HorarioApoioSwaggerDto[];
-
-  @ApiPropertyOptional({
-    isArray: true,
-    example: ['https://cdn.example.com/apoios/casa-esperanca.jpg'],
-  })
-  imagensUrl?: string[];
 }

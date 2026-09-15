@@ -1,6 +1,5 @@
 import { Artigo } from '../../../domain/artigo/entities/artigo.entity.js';
 import { ConteudoArtigo } from '../../../domain/artigo/value-objects/conteudo-artigo.value-object.js';
-import { ImagemUrl } from '../../../domain/artigo/value-objects/imagem-url.value-object.js';
 import { TempoLeitura } from '../../../domain/artigo/value-objects/tempo-leitura.value-object.js';
 import { TituloArtigo } from '../../../domain/artigo/value-objects/titulo-artigo.value-object.js';
 import type { StatusArtigo } from '../../../domain/artigo/entities/artigo.entity.js';
@@ -11,7 +10,6 @@ export interface CreateArtigoInput {
   titulo: string;
   conteudo: string;
   tempoLeituraMinutos: number;
-  imagemUrl?: string | null;
   status: StatusArtigo;
   categoriaIds: string[];
   tagIds?: string[];
@@ -29,10 +27,7 @@ export class CreateArtigoUseCase {
       titulo: TituloArtigo.create(input.titulo),
       conteudo: ConteudoArtigo.create(input.conteudo),
       tempoLeitura: TempoLeitura.create(input.tempoLeituraMinutos),
-      imagemUrl:
-        input.imagemUrl === undefined || input.imagemUrl === null
-          ? null
-          : ImagemUrl.create(input.imagemUrl),
+      imagemUrl: null,
       status: input.status,
       categorias: input.categoriaIds.map((id) => ({ id, nome: id })),
       tags: (input.tagIds ?? []).map((id) => ({ id, nome: id })),
@@ -46,7 +41,7 @@ export class CreateArtigoUseCase {
       titulo: preview.toPublic().titulo,
       conteudo: preview.toPublic().conteudo,
       tempoLeituraMinutos: preview.toPublic().tempoLeituraMinutos,
-      imagemUrl: preview.toPublic().imagemUrl,
+      imagemObjectKey: null,
       status: input.status,
       categoriaIds: input.categoriaIds,
       tagIds: input.tagIds ?? [],

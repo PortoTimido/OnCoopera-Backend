@@ -29,9 +29,18 @@ import {
   BackofficeArtigoTagsController,
 } from './backoffice-artigo-taxonomia.controller.js';
 import { MobileArtigosController } from './mobile-artigos.controller.js';
+import { ArmazenamentoImagemModule } from '../../infrastructure/armazenamento-imagem/armazenamento-imagem.module.js';
+import {
+  IMAGE_STORAGE,
+  type ImageStorage,
+} from '../../application/armazenamento-imagem/image-storage.port.js';
+import {
+  DeleteArtigoImagemUseCase,
+  UploadArtigoImagemUseCase,
+} from '../../application/artigo/use-cases/manage-artigo-imagem.use-cases.js';
 
 @Module({
-  imports: [AuthModule],
+  imports: [AuthModule, ArmazenamentoImagemModule],
   controllers: [
     BackofficeArtigosController,
     BackofficeArtigoCategoriasController,
@@ -41,8 +50,9 @@ import { MobileArtigosController } from './mobile-artigos.controller.js';
   providers: [
     {
       provide: ARTIGO_REPOSITORY,
-      useFactory: (prisma: PrismaService) => new PrismaArtigoRepository(prisma),
-      inject: [PrismaService],
+      useFactory: (prisma: PrismaService, storage: ImageStorage) =>
+        new PrismaArtigoRepository(prisma, storage),
+      inject: [PrismaService, IMAGE_STORAGE],
     },
     {
       provide: ListArtigosUseCase,
@@ -70,9 +80,21 @@ import { MobileArtigosController } from './mobile-artigos.controller.js';
     },
     {
       provide: DeleteArtigoUseCase,
-      useFactory: (artigos: ArtigoRepository) =>
-        new DeleteArtigoUseCase(artigos),
-      inject: [ARTIGO_REPOSITORY],
+      useFactory: (artigos: ArtigoRepository, storage: ImageStorage) =>
+        new DeleteArtigoUseCase(artigos, storage),
+      inject: [ARTIGO_REPOSITORY, IMAGE_STORAGE],
+    },
+    {
+      provide: UploadArtigoImagemUseCase,
+      useFactory: (artigos: ArtigoRepository, storage: ImageStorage) =>
+        new UploadArtigoImagemUseCase(artigos, storage),
+      inject: [ARTIGO_REPOSITORY, IMAGE_STORAGE],
+    },
+    {
+      provide: DeleteArtigoImagemUseCase,
+      useFactory: (artigos: ArtigoRepository, storage: ImageStorage) =>
+        new DeleteArtigoImagemUseCase(artigos, storage),
+      inject: [ARTIGO_REPOSITORY, IMAGE_STORAGE],
     },
     {
       provide: ListPublishedArtigosUseCase,

@@ -30,7 +30,7 @@ export interface CreateArtigoRepositoryInput {
   titulo: string;
   conteudo: string;
   tempoLeituraMinutos: number;
-  imagemUrl: string | null;
+  imagemObjectKey: string | null;
   status: StatusArtigo;
   categoriaIds: string[];
   tagIds: string[];
@@ -42,7 +42,7 @@ export interface UpdateArtigoRepositoryInput {
   titulo?: string;
   conteudo?: string;
   tempoLeituraMinutos?: number;
-  imagemUrl?: string | null;
+  imagemObjectKey?: string | null;
   status?: StatusArtigo;
   categoriaIds?: string[];
   tagIds?: string[];
@@ -59,7 +59,9 @@ export interface ArtigoRepository {
   findPublishedArtigoById(id: string): Promise<PublicArtigo | null>;
   createArtigo(input: CreateArtigoRepositoryInput): Promise<PublicArtigo>;
   updateArtigo(input: UpdateArtigoRepositoryInput): Promise<PublicArtigo>;
-  desativarArtigo(id: string, desativadoEm: Date): Promise<void>;
+  findImagemObjectKey(id: string): Promise<string | null>;
+  setImagemObjectKey(id: string, objectKey: string | null): Promise<void>;
+  desativarArtigo(id: string, desativadoEm: Date): Promise<string | null>;
   listCategorias(search?: string): Promise<PublicTaxonomia[]>;
   createCategoria(input: UpsertTaxonomiaInput): Promise<PublicTaxonomia>;
   updateCategoria(

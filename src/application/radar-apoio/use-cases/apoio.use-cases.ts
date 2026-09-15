@@ -9,6 +9,7 @@ import {
   validateHorarios,
   type PublicApoio,
 } from '../../../domain/radar-apoio/entities/apoio.entity.js';
+import type { ImageStorage } from '../../armazenamento-imagem/image-storage.port.js';
 export class ListApoiosUseCase {
   constructor(private readonly repo: ApoioRepository) {}
   execute(input: ListApoiosInput): Promise<PaginatedApoios> {
@@ -44,10 +45,16 @@ export class UpdateApoioUseCase {
   }
 }
 export class DeactivateApoioUseCase {
-  constructor(private readonly repo: ApoioRepository) {}
+  constructor(
+    private readonly repo: ApoioRepository,
+    private readonly storage: ImageStorage,
+  ) {}
   async execute(id: string): Promise<void> {
     if (!(await this.repo.findById(id)))
       throw new ApoioApplicationError('NOT_FOUND', 'Apoio nao encontrado.');
-    await this.repo.deactivate(id);
+    const objectKeys = await this.repo.deactivateAndRemoveImagens(id);
+    await Promise.all(
+      objectKeys.map((objectKey) => this.storage.remove(objectKey)),
+    );
   }
 }

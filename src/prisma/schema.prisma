@@ -252,7 +252,7 @@ model HorarioFuncionamento {
 model ApoioImagem {
   id        String @id @default(uuid()) @db.Uuid
   apoioId   String @map("apoio_id") @db.Uuid
-  imagemUrl String @map("imagem_url")
+  objectKey String @map("object_key")
   ordem     Int
   apoio     Apoio  @relation(fields: [apoioId], references: [id], onDelete: Cascade)
 
@@ -267,7 +267,7 @@ model Artigo {
   titulo              String
   conteudo            String            @db.Text
   tempoLeituraMinutos Int               @map("tempo_leitura_minutos")
-  imagemUrl           String?           @map("imagem_url")
+  imagemObjectKey     String?           @map("imagem_object_key")
   status              StatusArtigo
   dataCriacao         DateTime          @default(now()) @map("data_criacao")
   dataAtualizacao     DateTime          @updatedAt @map("data_atualizacao")

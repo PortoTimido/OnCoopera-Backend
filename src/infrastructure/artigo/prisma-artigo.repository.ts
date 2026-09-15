@@ -19,6 +19,7 @@ import type {
   UpsertTaxonomiaInput,
 } from '../../application/artigo/ports/artigo.repository.js';
 import { PrismaService } from '../database/prisma.service.js';
+import type { ImageStorage } from '../../application/armazenamento-imagem/image-storage.port.js';
 
 interface ArtigoPersistenceRecord {
   id: string;
@@ -26,7 +27,7 @@ interface ArtigoPersistenceRecord {
   titulo: string;
   conteudo: string;
   tempoLeituraMinutos: number;
-  imagemUrl: string | null;
+  imagemObjectKey: string | null;
   status: string;
   dataCriacao: Date;
   dataAtualizacao: Date;
@@ -53,7 +54,10 @@ const artigoInclude = {
 } as const;
 
 export class PrismaArtigoRepository implements ArtigoRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly storage: ImageStorage,
+  ) {}
 
   async listArtigos(input: ListArtigosInput): Promise<PaginatedArtigos> {
     const where = this.toArtigoWhere(input);
@@ -69,7 +73,9 @@ export class PrismaArtigoRepository implements ArtigoRepository {
     ]);
 
     return {
-      data: records.map((record) => this.toPublicArtigo(record)),
+      data: await Promise.all(
+        records.map((record) => this.toPublicArtigo(record)),
+      ),
       page: input.page,
       pageSize: input.pageSize,
       total,
@@ -108,7 +114,7 @@ export class PrismaArtigoRepository implements ArtigoRepository {
           titulo: input.titulo,
           conteudo: input.conteudo,
           tempoLeituraMinutos: input.tempoLeituraMinutos,
-          imagemUrl: input.imagemUrl,
+          imagemObjectKey: input.imagemObjectKey,
           status: input.status,
           dataPublicacao: input.dataPublicacao,
           categorias: {
@@ -181,14 +187,47 @@ export class PrismaArtigoRepository implements ArtigoRepository {
     }
   }
 
-  async desativarArtigo(id: string, desativadoEm: Date): Promise<void> {
+  async findImagemObjectKey(id: string): Promise<string | null> {
+    const record = await this.prisma.artigo.findUnique({
+      where: { id },
+      select: { imagemObjectKey: true },
+    });
+    return record?.imagemObjectKey ?? null;
+  }
+
+  async setImagemObjectKey(
+    id: string,
+    objectKey: string | null,
+  ): Promise<void> {
     try {
       await this.prisma.artigo.update({
         where: { id },
-        data: {
-          status: 'DESATIVADO',
-          dataAtualizacao: desativadoEm,
-        },
+        data: { imagemObjectKey: objectKey },
+      });
+    } catch (error) {
+      throw this.mapPersistenceError(error);
+    }
+  }
+
+  async desativarArtigo(
+    id: string,
+    desativadoEm: Date,
+  ): Promise<string | null> {
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const current = await tx.artigo.findUniqueOrThrow({
+          where: { id },
+          select: { imagemObjectKey: true },
+        });
+        await tx.artigo.update({
+          where: { id },
+          data: {
+            status: 'DESATIVADO',
+            dataAtualizacao: desativadoEm,
+            imagemObjectKey: null,
+          },
+        });
+        return current.imagemObjectKey;
       });
     } catch (error) {
       throw this.mapPersistenceError(error);
@@ -202,9 +241,7 @@ export class PrismaArtigoRepository implements ArtigoRepository {
     });
   }
 
-  async createCategoria(
-    input: UpsertTaxonomiaInput,
-  ): Promise<PublicTaxonomia> {
+  async createCategoria(input: UpsertTaxonomiaInput): Promise<PublicTaxonomia> {
     try {
       return await this.prisma.categoria.create({ data: input });
     } catch (error) {
@@ -330,15 +367,20 @@ export class PrismaArtigoRepository implements ArtigoRepository {
     };
   }
 
-  private toPublicArtigo(record: ArtigoPersistenceRecord): PublicArtigo {
+  private async toPublicArtigo(
+    record: ArtigoPersistenceRecord,
+  ): Promise<PublicArtigo> {
+    const imagemUrl =
+      record.imagemObjectKey === null
+        ? null
+        : await this.storage.getTemporaryUrl(record.imagemObjectKey);
     return Artigo.create({
       id: record.id,
       autorId: record.autorId,
       titulo: TituloArtigo.create(record.titulo),
       conteudo: ConteudoArtigo.create(record.conteudo),
       tempoLeitura: TempoLeitura.create(record.tempoLeituraMinutos),
-      imagemUrl:
-        record.imagemUrl === null ? null : ImagemUrl.create(record.imagemUrl),
+      imagemUrl: imagemUrl === null ? null : ImagemUrl.create(imagemUrl),
       status: record.status as StatusArtigo,
       categorias: record.categorias.map((item) => item.categoria),
       tags: record.tags.map((item) => item.tag),
@@ -389,7 +431,9 @@ function toArtigoUpdateData(
     ...(input.tempoLeituraMinutos !== undefined
       ? { tempoLeituraMinutos: input.tempoLeituraMinutos }
       : {}),
-    ...(input.imagemUrl !== undefined ? { imagemUrl: input.imagemUrl } : {}),
+    ...(input.imagemObjectKey !== undefined
+      ? { imagemObjectKey: input.imagemObjectKey }
+      : {}),
     ...(input.status !== undefined ? { status: input.status } : {}),
     ...(input.dataPublicacao !== undefined
       ? { dataPublicacao: input.dataPublicacao }

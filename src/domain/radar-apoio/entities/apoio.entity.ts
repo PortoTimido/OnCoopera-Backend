@@ -27,6 +27,11 @@ export interface HorarioApoio {
   horarioInicio: string;
   horarioFim: string;
 }
+export interface PublicApoioImagem {
+  id: string;
+  url: string;
+  ordem: number;
+}
 export interface PublicApoio {
   id: string;
   nome: string;
@@ -37,6 +42,7 @@ export interface PublicApoio {
   endereco: EnderecoApoio;
   horarios: HorarioApoio[];
   imagensUrl: string[];
+  imagens: PublicApoioImagem[];
   dataCriacao: Date;
   dataAtualizacao: Date;
   estaAbertoAgora: boolean;
@@ -68,7 +74,7 @@ export function validateHorarios(horarios: HorarioApoio[]): void {
       a.horarioInicio.localeCompare(b.horarioInicio),
     );
     for (let index = 1; index < ordered.length; index += 1)
-      if (ordered[index - 1]!.horarioFim > ordered[index]!.horarioInicio)
+      if (ordered[index - 1].horarioFim > ordered[index].horarioInicio)
         throw new DomainValidationError(
           'Horarios do mesmo dia nao podem se sobrepor.',
         );

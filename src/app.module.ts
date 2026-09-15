@@ -7,13 +7,17 @@ import { RadarApoioModule } from './api/radar-apoio/radar-apoio.module.js';
 import { AuthModule } from './api/usuario-autenticacao/auth.module.js';
 import { PrismaModule } from './infrastructure/database/prisma.module.js';
 import { DiarioSintomasModule } from './api/diario-sintomas/diario-sintomas.module.js';
+import { ArmazenamentoImagemModule } from './infrastructure/armazenamento-imagem/armazenamento-imagem.module.js';
+import { validateEnvironment } from './app.config.js';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+      validate: validateEnvironment,
     }),
     PrismaModule,
+    ArmazenamentoImagemModule,
     AuthModule,
     ArtigoModule,
     RadarApoioModule,
