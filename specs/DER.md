@@ -1,3 +1,7 @@
+# Diagrama Entidade-Relacionamento
+
+O diagrama abaixo representa o modelo físico definido em `src/prisma/schema.prisma`.
+
 ```mermaid
 erDiagram
     USUARIO ||--o| PACIENTE : possui
@@ -12,8 +16,7 @@ erDiagram
     APOIO ||--o{ HORARIO_FUNCIONAMENTO : funciona
     APOIO ||--o{ APOIO_IMAGEM : possui
 
-    ADMINISTRADOR ||--o{ ADMINISTRADOR_PERFIL : recebe
-    PERFIL_ADMINISTRATIVO ||--o{ ADMINISTRADOR_PERFIL : define
+    ADMINISTRADOR ||--o{ ADMINISTRADOR_PERMISSAO : recebe
 
     ADMINISTRADOR ||--o{ ARTIGO : escreve
     ARTIGO ||--o{ ARTIGO_CATEGORIA : classifica
@@ -29,9 +32,11 @@ erDiagram
         string senha_hash
         string telefone
         date data_nascimento
-        string status
+        StatusUsuario status
         boolean troca_senha_obrigatoria
         datetime data_criacao
+        datetime data_atualizacao
+        datetime ultimo_acesso
     }
 
     SESSAO_AUTENTICACAO {
@@ -42,6 +47,8 @@ erDiagram
         datetime expires_at
         datetime revoked_at
         datetime last_used_at
+        datetime created_at
+        datetime updated_at
     }
 
     PACIENTE {
@@ -53,15 +60,9 @@ erDiagram
         uuid usuario_id PK, FK
     }
 
-    PERFIL_ADMINISTRATIVO {
-        uuid id PK
-        string nome UK
-        string descricao
-    }
-
-    ADMINISTRADOR_PERFIL {
+    ADMINISTRADOR_PERMISSAO {
         uuid administrador_id PK, FK
-        uuid perfil_id PK, FK
+        PermissaoAdministrativa permissao PK
     }
 
     ENDERECO {
@@ -100,16 +101,20 @@ erDiagram
         datetime data_hora
         string status_consulta
         string observacao
+        datetime data_criacao
+        datetime data_atualizacao
     }
 
     APOIO {
         uuid id PK
         uuid endereco_id FK
         string nome
-        string tipo_apoio
+        TipoApoio tipo_apoio
         string telefone
         text descricao
-        string status_administrativo
+        StatusApoio status_administrativo
+        datetime data_criacao
+        datetime data_atualizacao
     }
 
     HORARIO_FUNCIONAMENTO {
@@ -134,7 +139,9 @@ erDiagram
         text conteudo
         int tempo_leitura_minutos
         string imagem_url
-        string status
+        StatusArtigo status
+        datetime data_criacao
+        datetime data_atualizacao
         datetime data_publicacao
     }
 
@@ -158,3 +165,19 @@ erDiagram
         uuid tag_id PK, FK
     }
 ```
+
+## Restrições e enumerações
+
+- `registro_diario` possui unicidade composta em `(paciente_id, data_registro)`.
+- `horario_funcionamento` possui unicidade composta em `(apoio_id, dia_semana, horario_inicio, horario_fim)`.
+- `apoio_imagem` possui unicidade composta em `(apoio_id, ordem)`.
+- `artigo_categoria`, `artigo_tag` e `administrador_permissao` usam chaves primárias compostas pelas colunas indicadas no diagrama.
+- Exclusões em cascata: `usuario → sessao_autenticacao`, `usuario → paciente`, `usuario → administrador`, `administrador → administrador_permissao`, `paciente → registro_diario`, `registro_diario → registro_sintoma`, `apoio → horario_funcionamento`, `apoio → apoio_imagem`, `artigo → artigo_categoria/artigo_tag` e `categoria/tag →` suas respectivas tabelas associativas.
+
+| Enum | Valores |
+| --- | --- |
+| `StatusUsuario` | `ATIVO`, `INATIVO`, `BLOQUEADO` |
+| `TipoApoio` | `ONG`, `CLINICA`, `TRANSPORTE`, `CASA_APOIO`, `PSICOLOGO` |
+| `StatusApoio` | `RASCUNHO`, `ATIVO`, `DESATIVADO` |
+| `StatusArtigo` | `RASCUNHO`, `PUBLICADO`, `DESATIVADO` |
+| `PermissaoAdministrativa` | `TOTAL`, `GERENCIAR_USUARIOS`, `GESTAO_CONTEUDOS`, `GESTAO_RADAR_APOIO` |
