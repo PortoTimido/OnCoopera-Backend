@@ -60,6 +60,7 @@ export class ChangePasswordUseCase {
 
     await this.usuarios.updatePasswordHash(input.usuarioId, newPasswordHash, {
       trocaSenhaObrigatoria: false,
+      senhaTemporariaExpiraEm: null,
     });
     await this.sessions.revokeAllByUsuarioId(input.usuarioId, new Date());
   }

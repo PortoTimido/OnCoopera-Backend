@@ -37,6 +37,7 @@ import { ChangeTemporaryPasswordUseCase } from '../../src/application/usuario-au
 import { GetAuthenticatedUserUseCase } from '../../src/application/usuario-autenticacao/use-cases/get-authenticated-user.use-case.js';
 import { LogoutSessionUseCase } from '../../src/application/usuario-autenticacao/use-cases/logout-session.use-case.js';
 import { RefreshSessionUseCase } from '../../src/application/usuario-autenticacao/use-cases/refresh-session.use-case.js';
+import { UpdateOwnProfileUseCase } from '../../src/application/usuario-autenticacao/use-cases/update-own-profile.use-case.js';
 
 const authConfig: AuthConfig = {
   jwtAccessSecret: 'test-access-secret',
@@ -358,6 +359,9 @@ function createController(options?: {
     {
       execute: () => Promise.resolve(),
     } as ChangeTemporaryPasswordUseCase,
+    {
+      execute: () => Promise.resolve({}),
+    } as UpdateOwnProfileUseCase,
     authConfig,
   );
 }
@@ -407,6 +411,7 @@ function createEmptyUsuarioRepository(): UsuarioRepository {
     findById: () => Promise.resolve(null),
     updateLastAccess: () => Promise.resolve(),
     updatePasswordHash: () => Promise.resolve(),
+    updateProfile: () => Promise.reject(new Error('Não usado neste teste.')),
   };
 }
 

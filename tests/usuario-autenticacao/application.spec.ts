@@ -1,7 +1,10 @@
 import { test } from '@japa/runner';
 import { AuthSession } from '../../src/domain/usuario-autenticacao/entities/auth-session.entity.js';
 import { Usuario } from '../../src/domain/usuario-autenticacao/entities/usuario.entity.js';
-import type { StatusUsuario } from '../../src/domain/usuario-autenticacao/entities/usuario.entity.js';
+import type {
+  PermissaoAdministrativaNome,
+  StatusUsuario,
+} from '../../src/domain/usuario-autenticacao/entities/usuario.entity.js';
 import { DataNascimento } from '../../src/domain/usuario-autenticacao/value-objects/data-nascimento.value-object.js';
 import { Email } from '../../src/domain/usuario-autenticacao/value-objects/email.value-object.js';
 import { Login } from '../../src/domain/usuario-autenticacao/value-objects/login.value-object.js';
@@ -25,6 +28,7 @@ import { ChangePasswordUseCase } from '../../src/application/usuario-autenticaca
 import { ChangeTemporaryPasswordUseCase } from '../../src/application/usuario-autenticacao/use-cases/change-temporary-password.use-case.js';
 import { LogoutSessionUseCase } from '../../src/application/usuario-autenticacao/use-cases/logout-session.use-case.js';
 import { RefreshSessionUseCase } from '../../src/application/usuario-autenticacao/use-cases/refresh-session.use-case.js';
+import { UpdateOwnProfileUseCase } from '../../src/application/usuario-autenticacao/use-cases/update-own-profile.use-case.js';
 
 const authConfig: AuthConfig = {
   jwtAccessSecret: 'test-access-secret',
@@ -208,6 +212,42 @@ test.group('usuario-autenticacao application', () => {
     );
   });
 
+  test('atualização de dados pessoais preserva permissões administrativas e rejeita usuário inativo', async ({
+    assert,
+  }) => {
+    const fixture = createFixture({
+      tipo: 'ADMINISTRADOR',
+      permissoesAdministrativas: ['GESTAO_CONTEUDOS'],
+    });
+
+    const updated = await fixture.updateOwnProfileUseCase().execute('user-1', {
+      nome: 'Novo Nome',
+      email: 'novo.email@example.com',
+      telefone: '11988887777',
+    });
+
+    assert.equal(updated.nome, 'Novo Nome');
+    assert.equal(updated.email, 'novo.email@example.com');
+    assert.equal(updated.telefone, '11988887777');
+    assert.deepEqual(updated.permissoesAdministrativas, [
+      'GESTAO_CONTEUDOS',
+    ]);
+    assert.equal(updated.login, 'usuario.teste');
+
+    const inactiveFixture = createFixture({ status: 'INATIVO' });
+    const inactiveError = await captureError(() =>
+      inactiveFixture.updateOwnProfileUseCase().execute('user-1', {
+        nome: 'Outro Nome',
+      }),
+    );
+
+    assert.equal(inactiveError instanceof AuthApplicationError, true);
+    assert.equal(
+      (inactiveError as AuthApplicationError).code,
+      'UNAUTHORIZED',
+    );
+  });
+
   test('login normal bloqueia troca obrigatória e troca senha temporária', async ({
     assert,
   }) => {
@@ -246,10 +286,14 @@ test.group('usuario-autenticacao application', () => {
 function createFixture(options?: {
   status?: StatusUsuario;
   trocaSenhaObrigatoria?: boolean;
+  tipo?: 'USUARIO' | 'PACIENTE' | 'ADMINISTRADOR';
+  permissoesAdministrativas?: string[];
 }) {
   const usuarios = new InMemoryUsuarioRepository([
     createUsuario(options?.status ?? 'ATIVO', {
       trocaSenhaObrigatoria: options?.trocaSenhaObrigatoria ?? false,
+      tipo: options?.tipo,
+      permissoesAdministrativas: options?.permissoesAdministrativas,
     }),
   ]);
   const sessions = new InMemoryAuthSessionRepository();
@@ -290,12 +334,17 @@ function createFixture(options?: {
       new ChangePasswordUseCase(usuarios, sessions, passwordHasher),
     changeTemporaryPasswordUseCase: () =>
       new ChangeTemporaryPasswordUseCase(usuarios, sessions, passwordHasher),
+    updateOwnProfileUseCase: () => new UpdateOwnProfileUseCase(usuarios),
   };
 }
 
 function createUsuario(
   status: StatusUsuario,
-  options?: { trocaSenhaObrigatoria?: boolean },
+  options?: {
+    trocaSenhaObrigatoria?: boolean;
+    tipo?: 'USUARIO' | 'PACIENTE' | 'ADMINISTRADOR';
+    permissoesAdministrativas?: string[];
+  },
 ): Usuario {
   return Usuario.create({
     id: 'user-1',
@@ -306,8 +355,10 @@ function createUsuario(
     telefone: Telefone.fromString('11999998888'),
     dataNascimento: DataNascimento.create(new Date('1990-05-20T00:00:00.000Z')),
     status,
-    tipo: 'USUARIO',
-    permissoesAdministrativas: [],
+    tipo: options?.tipo ?? 'USUARIO',
+    permissoesAdministrativas:
+      (options?.permissoesAdministrativas as PermissaoAdministrativaNome[]) ??
+      [],
     trocaSenhaObrigatoria: options?.trocaSenhaObrigatoria ?? false,
     dataCriacao: new Date('2026-01-01T00:00:00.000Z'),
     dataAtualizacao: new Date('2026-01-01T00:00:00.000Z'),
@@ -384,6 +435,39 @@ class InMemoryUsuarioRepository implements UsuarioRepository {
       );
       this.passwordUpdates.push(senhaHash);
     }
+  }
+
+  async updateProfile(
+    id: string,
+    data: {
+      nome?: string;
+      email?: string;
+      telefone?: string;
+      dataNascimento?: Date;
+    },
+  ) {
+    const usuario = this.usuarios.get(id);
+
+    if (usuario === undefined) {
+      throw new Error('Usuário não encontrado.');
+    }
+
+    const updated = usuario.atualizarDadosPessoais({
+      nome: data.nome !== undefined ? Nome.create(data.nome) : undefined,
+      email: data.email !== undefined ? Email.create(data.email) : undefined,
+      telefone:
+        data.telefone !== undefined
+          ? Telefone.fromString(data.telefone)
+          : undefined,
+      dataNascimento:
+        data.dataNascimento !== undefined
+          ? DataNascimento.create(data.dataNascimento)
+          : undefined,
+    });
+
+    this.usuarios.set(id, updated);
+
+    return updated.toPublic();
   }
 }
 

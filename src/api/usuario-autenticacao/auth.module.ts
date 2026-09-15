@@ -49,7 +49,24 @@ import { ListUsuariosUseCase } from '../../application/usuario-autenticacao/use-
 import { LogoutSessionUseCase } from '../../application/usuario-autenticacao/use-cases/logout-session.use-case.js';
 import { RefreshSessionUseCase } from '../../application/usuario-autenticacao/use-cases/refresh-session.use-case.js';
 import { UpdateAdministradorUseCase } from '../../application/usuario-autenticacao/use-cases/update-administrador.use-case.js';
+import { UpdateOwnProfileUseCase } from '../../application/usuario-autenticacao/use-cases/update-own-profile.use-case.js';
 import { UpdatePacienteUseCase } from '../../application/usuario-autenticacao/use-cases/update-paciente.use-case.js';
+import {
+  PASSWORD_RECOVERY_REPOSITORY,
+  type PasswordRecoveryRepository,
+} from '../../application/usuario-autenticacao/ports/password-recovery.repository.js';
+import {
+  RequestPasswordRecoveryUseCase,
+  ResetPasswordWithTokenUseCase,
+  VerifyPasswordRecoveryCodeUseCase,
+} from '../../application/usuario-autenticacao/use-cases/password-recovery.use-cases.js';
+import { ResendTemporaryAccessUseCase } from '../../application/usuario-autenticacao/use-cases/resend-temporary-access.use-case.js';
+import {
+  EMAIL_SERVICE,
+  type EmailService,
+} from '../../application/email/email.service.js';
+import { PrismaPasswordRecoveryRepository } from '../../infrastructure/usuario-autenticacao/prisma-password-recovery.repository.js';
+import { EmailModule } from '../../infrastructure/email/email.module.js';
 import { PrismaService } from '../../infrastructure/database/prisma.service.js';
 import { createAuthConfigFromEnv } from '../../infrastructure/usuario-autenticacao/auth-config.factory.js';
 import { BcryptPasswordHasher } from '../../infrastructure/usuario-autenticacao/bcrypt-password-hasher.js';
@@ -66,7 +83,7 @@ import { JwtAuthGuard } from './jwt-auth.guard.js';
 import { MobilePacientesController } from './mobile-pacientes.controller.js';
 
 @Module({
-  imports: [JwtModule.register({})],
+  imports: [JwtModule.register({}), EmailModule],
   controllers: [
     AuthController,
     BackofficeUsuariosController,
@@ -117,6 +134,12 @@ import { MobilePacientesController } from './mobile-pacientes.controller.js';
       provide: AUTH_SESSION_REPOSITORY,
       useFactory: (prisma: PrismaService) =>
         new PrismaAuthSessionRepository(prisma),
+      inject: [PrismaService],
+    },
+    {
+      provide: PASSWORD_RECOVERY_REPOSITORY,
+      useFactory: (prisma: PrismaService) =>
+        new PrismaPasswordRecoveryRepository(prisma),
       inject: [PrismaService],
     },
     {
@@ -208,6 +231,12 @@ import { MobilePacientesController } from './mobile-pacientes.controller.js';
       inject: [USUARIO_REPOSITORY, AUTH_SESSION_REPOSITORY, PASSWORD_HASHER],
     },
     {
+      provide: UpdateOwnProfileUseCase,
+      useFactory: (usuarios: UsuarioRepository) =>
+        new UpdateOwnProfileUseCase(usuarios),
+      inject: [USUARIO_REPOSITORY],
+    },
+    {
       provide: ListUsuariosUseCase,
       useFactory: (usuarios: UsuarioManagementRepository) =>
         new ListUsuariosUseCase(usuarios),
@@ -225,16 +254,121 @@ import { MobilePacientesController } from './mobile-pacientes.controller.js';
         usuarios: UsuarioManagementRepository,
         passwordHasher: PasswordHasher,
         temporaryPasswords: TemporaryPasswordGenerator,
+        email: EmailService,
+        config: AuthConfig,
       ) =>
         new CreateAdministradorUseCase(
           usuarios,
           passwordHasher,
           temporaryPasswords,
+          email,
+          config,
         ),
       inject: [
         USUARIO_MANAGEMENT_REPOSITORY,
         PASSWORD_HASHER,
         TEMPORARY_PASSWORD_GENERATOR,
+        EMAIL_SERVICE,
+        AUTH_CONFIG,
+      ],
+    },
+    {
+      provide: RequestPasswordRecoveryUseCase,
+      useFactory: (
+        usuarios: UsuarioRepository,
+        recoveries: PasswordRecoveryRepository,
+        tokens: TokenHasher,
+        email: EmailService,
+        config: AuthConfig,
+      ) =>
+        new RequestPasswordRecoveryUseCase(
+          usuarios,
+          recoveries,
+          tokens,
+          email,
+          config,
+        ),
+      inject: [
+        USUARIO_REPOSITORY,
+        PASSWORD_RECOVERY_REPOSITORY,
+        TOKEN_HASHER,
+        EMAIL_SERVICE,
+        AUTH_CONFIG,
+      ],
+    },
+    {
+      provide: VerifyPasswordRecoveryCodeUseCase,
+      useFactory: (
+        usuarios: UsuarioRepository,
+        recoveries: PasswordRecoveryRepository,
+        tokens: TokenHasher,
+        secrets: SecretGenerator,
+        config: AuthConfig,
+      ) =>
+        new VerifyPasswordRecoveryCodeUseCase(
+          usuarios,
+          recoveries,
+          tokens,
+          secrets,
+          config,
+        ),
+      inject: [
+        USUARIO_REPOSITORY,
+        PASSWORD_RECOVERY_REPOSITORY,
+        TOKEN_HASHER,
+        SECRET_GENERATOR,
+        AUTH_CONFIG,
+      ],
+    },
+    {
+      provide: ResetPasswordWithTokenUseCase,
+      useFactory: (
+        recoveries: PasswordRecoveryRepository,
+        tokens: TokenHasher,
+        passwords: PasswordHasher,
+        usuarios: UsuarioRepository,
+        sessions: AuthSessionRepository,
+      ) =>
+        new ResetPasswordWithTokenUseCase(
+          recoveries,
+          tokens,
+          passwords,
+          usuarios,
+          sessions,
+        ),
+      inject: [
+        PASSWORD_RECOVERY_REPOSITORY,
+        TOKEN_HASHER,
+        PASSWORD_HASHER,
+        USUARIO_REPOSITORY,
+        AUTH_SESSION_REPOSITORY,
+      ],
+    },
+    {
+      provide: ResendTemporaryAccessUseCase,
+      useFactory: (
+        usuarios: UsuarioRepository,
+        sessions: AuthSessionRepository,
+        passwords: PasswordHasher,
+        generator: TemporaryPasswordGenerator,
+        email: EmailService,
+        config: AuthConfig,
+      ) =>
+        new ResendTemporaryAccessUseCase(
+          usuarios,
+          sessions,
+          passwords,
+          generator,
+          email,
+          config,
+        ),
+      inject: [
+        USUARIO_REPOSITORY,
+        AUTH_SESSION_REPOSITORY,
+        PASSWORD_HASHER,
+        TEMPORARY_PASSWORD_GENERATOR,
+        EMAIL_SERVICE,
+        AUTH_CONFIG,
       ],
     },
     {

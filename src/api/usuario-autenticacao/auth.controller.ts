@@ -5,6 +5,7 @@ import {
   Headers,
   HttpCode,
   Inject,
+  Patch,
   Post,
   Req,
   Res,
@@ -36,6 +37,12 @@ import { ChangeTemporaryPasswordUseCase } from '../../application/usuario-autent
 import { GetAuthenticatedUserUseCase } from '../../application/usuario-autenticacao/use-cases/get-authenticated-user.use-case.js';
 import { LogoutSessionUseCase } from '../../application/usuario-autenticacao/use-cases/logout-session.use-case.js';
 import { RefreshSessionUseCase } from '../../application/usuario-autenticacao/use-cases/refresh-session.use-case.js';
+import { UpdateOwnProfileUseCase } from '../../application/usuario-autenticacao/use-cases/update-own-profile.use-case.js';
+import {
+  RequestPasswordRecoveryUseCase,
+  ResetPasswordWithTokenUseCase,
+  VerifyPasswordRecoveryCodeUseCase,
+} from '../../application/usuario-autenticacao/use-cases/password-recovery.use-cases.js';
 import { ZodValidationPipe } from '../common/zod-validation.pipe.js';
 import {
   clearAuthCookies,
@@ -49,9 +56,17 @@ import {
   changePasswordSchema,
   changeTemporaryPasswordSchema,
   loginSchema,
+  updateOwnProfileSchema,
+  passwordRecoveryRequestSchema,
+  passwordRecoveryVerifySchema,
+  passwordRecoveryResetSchema,
   type ChangePasswordRequestBody,
   type ChangeTemporaryPasswordRequestBody,
   type LoginRequestBody,
+  type UpdateOwnProfileRequestBody,
+  type PasswordRecoveryRequestBody,
+  type PasswordRecoveryVerifyBody,
+  type PasswordRecoveryResetBody,
 } from './auth.schemas.js';
 import {
   AuthSwaggerResponseDto,
@@ -60,6 +75,10 @@ import {
   ChangeTemporaryPasswordSwaggerRequestDto,
   ErrorSwaggerResponseDto,
   LoginSwaggerRequestDto,
+  UpdateOwnProfileSwaggerRequestDto,
+  PasswordRecoveryRequestSwaggerDto,
+  PasswordRecoveryVerifySwaggerDto,
+  PasswordRecoveryResetSwaggerDto,
 } from './auth.swagger.js';
 
 @ApiTags('Usuário e Autenticação')
@@ -71,6 +90,10 @@ export class AuthController {
   private readonly getAuthenticatedUser: GetAuthenticatedUserUseCase;
   private readonly changePassword: ChangePasswordUseCase;
   private readonly changeTemporaryPassword: ChangeTemporaryPasswordUseCase;
+  private readonly updateOwnProfile: UpdateOwnProfileUseCase;
+  private readonly requestPasswordRecovery: RequestPasswordRecoveryUseCase;
+  private readonly verifyPasswordRecovery: VerifyPasswordRecoveryCodeUseCase;
+  private readonly resetPasswordWithToken: ResetPasswordWithTokenUseCase;
   private readonly config: AuthConfig;
 
   constructor(
@@ -80,7 +103,11 @@ export class AuthController {
     getAuthenticatedUser: GetAuthenticatedUserUseCase,
     changePassword: ChangePasswordUseCase,
     changeTemporaryPassword: ChangeTemporaryPasswordUseCase,
+    updateOwnProfile: UpdateOwnProfileUseCase,
     @Inject(AUTH_CONFIG) config: AuthConfig,
+    requestPasswordRecovery: RequestPasswordRecoveryUseCase,
+    verifyPasswordRecovery: VerifyPasswordRecoveryCodeUseCase,
+    resetPasswordWithToken: ResetPasswordWithTokenUseCase,
   ) {
     this.authenticateUser = authenticateUser;
     this.refreshSession = refreshSession;
@@ -88,6 +115,10 @@ export class AuthController {
     this.getAuthenticatedUser = getAuthenticatedUser;
     this.changePassword = changePassword;
     this.changeTemporaryPassword = changeTemporaryPassword;
+    this.updateOwnProfile = updateOwnProfile;
+    this.requestPasswordRecovery = requestPasswordRecovery;
+    this.verifyPasswordRecovery = verifyPasswordRecovery;
+    this.resetPasswordWithToken = resetPasswordWithToken;
     this.config = config;
   }
 
@@ -134,6 +165,58 @@ export class AuthController {
         accessToken: output.accessToken,
         usuario: output.usuario,
       };
+    } catch (error) {
+      throw mapAuthError(error);
+    }
+  }
+
+  @Post('password-recovery/request')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Solicitar recuperação de senha' })
+  @ApiBody({ type: PasswordRecoveryRequestSwaggerDto })
+  async requestRecovery(
+    @Req() request: AuthenticatedRequest,
+    @Body(new ZodValidationPipe(passwordRecoveryRequestSchema))
+    body: PasswordRecoveryRequestBody,
+  ) {
+    await this.requestPasswordRecovery.execute({
+      email: body.email,
+      ip: request.ip || request.socket.remoteAddress || 'unknown',
+    });
+    return {
+      message:
+        'Se o e-mail estiver cadastrado, você receberá as instruções para redefinir sua senha.',
+    };
+  }
+
+  @Post('password-recovery/verify')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Validar código de recuperação de senha' })
+  @ApiBody({ type: PasswordRecoveryVerifySwaggerDto })
+  async verifyRecovery(
+    @Body(new ZodValidationPipe(passwordRecoveryVerifySchema))
+    body: PasswordRecoveryVerifyBody,
+  ) {
+    try {
+      return await this.verifyPasswordRecovery.execute(body);
+    } catch (error) {
+      throw mapAuthError(error);
+    }
+  }
+
+  @Post('password-recovery/reset')
+  @HttpCode(204)
+  @ApiOperation({ summary: 'Redefinir senha com token de recuperação' })
+  @ApiBody({ type: PasswordRecoveryResetSwaggerDto })
+  async resetRecovery(
+    @Body(new ZodValidationPipe(passwordRecoveryResetSchema))
+    body: PasswordRecoveryResetBody,
+  ): Promise<void> {
+    try {
+      await this.resetPasswordWithToken.execute({
+        resetToken: body.resetToken,
+        newPassword: body.newPassword,
+      });
     } catch (error) {
       throw mapAuthError(error);
     }
@@ -290,6 +373,46 @@ export class AuthController {
     try {
       return await this.getAuthenticatedUser.execute(
         requireAuthContext(request).usuarioId,
+      );
+    } catch (error) {
+      throw mapAuthError(error);
+    }
+  }
+
+  @Patch('me')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({
+    summary: 'Atualizar dados pessoais do usuário autenticado',
+    description:
+      'Permite que o usuário autenticado atualize seus próprios dados pessoais (nome, e-mail, telefone, data de nascimento), independentemente de possuir permissões administrativas como GERENCIAR_USUARIOS ou TOTAL. Não permite alterar login, status ou permissões administrativas.',
+  })
+  @ApiBearerAuth()
+  @ApiBody({ type: UpdateOwnProfileSwaggerRequestDto })
+  @ApiOkResponse({
+    description: 'Dados pessoais atualizados com sucesso.',
+    type: AuthenticatedUserSwaggerDto,
+  })
+  @ApiBadRequestResponse({
+    description: 'Payload inválido.',
+    type: ErrorSwaggerResponseDto,
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Access token ausente, inválido ou sessão revogada.',
+    type: ErrorSwaggerResponseDto,
+  })
+  @ApiConflictResponse({
+    description: 'Email já cadastrado para outro usuário.',
+    type: ErrorSwaggerResponseDto,
+  })
+  async updateProfile(
+    @Req() request: AuthenticatedRequest,
+    @Body(new ZodValidationPipe(updateOwnProfileSchema))
+    body: UpdateOwnProfileRequestBody,
+  ) {
+    try {
+      return await this.updateOwnProfile.execute(
+        requireAuthContext(request).usuarioId,
+        body,
       );
     } catch (error) {
       throw mapAuthError(error);

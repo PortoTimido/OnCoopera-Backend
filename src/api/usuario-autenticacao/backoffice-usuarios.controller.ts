@@ -33,6 +33,7 @@ import { InactivatePacienteUseCase } from '../../application/usuario-autenticaca
 import { ListUsuariosUseCase } from '../../application/usuario-autenticacao/use-cases/list-usuarios.use-case.js';
 import { UpdateAdministradorUseCase } from '../../application/usuario-autenticacao/use-cases/update-administrador.use-case.js';
 import { UpdatePacienteUseCase } from '../../application/usuario-autenticacao/use-cases/update-paciente.use-case.js';
+import { ResendTemporaryAccessUseCase } from '../../application/usuario-autenticacao/use-cases/resend-temporary-access.use-case.js';
 import { ZodValidationPipe } from '../common/zod-validation.pipe.js';
 import { RequirePermissaoAdministrativa } from './permissao-administrativa.decorator.js';
 import { PermissaoAdministrativaGuard } from './permissao-administrativa.guard.js';
@@ -72,6 +73,7 @@ export class BackofficeUsuariosController {
     private readonly inactivateAdministrador: InactivateAdministradorUseCase,
     private readonly updatePaciente: UpdatePacienteUseCase,
     private readonly inactivatePaciente: InactivatePacienteUseCase,
+    private readonly resendTemporaryAccess: ResendTemporaryAccessUseCase,
   ) {}
 
   @Get('usuarios')
@@ -160,6 +162,17 @@ export class BackofficeUsuariosController {
   ) {
     try {
       return await this.createAdministrador.execute(body);
+    } catch (error) {
+      throw mapAuthError(error);
+    }
+  }
+
+  @Post('administradores/:id/reenviar-acesso-temporario')
+  @ApiOperation({ summary: 'Reenviar acesso temporário de administrador' })
+  @ApiOkResponse({ description: 'Novo acesso temporário gerado.' })
+  async resendAccess(@Param('id', new ParseUUIDPipe()) id: string) {
+    try {
+      return await this.resendTemporaryAccess.execute(id);
     } catch (error) {
       throw mapAuthError(error);
     }

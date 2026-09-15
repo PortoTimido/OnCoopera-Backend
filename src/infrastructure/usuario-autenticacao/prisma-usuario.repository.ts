@@ -3,6 +3,7 @@ import { Prisma } from '../../generated/prisma/client.js';
 import { Usuario } from '../../domain/usuario-autenticacao/entities/usuario.entity.js';
 import type {
   PermissaoAdministrativaNome,
+  PublicUsuario,
   StatusUsuario,
   TipoUsuario,
 } from '../../domain/usuario-autenticacao/entities/usuario.entity.js';
@@ -17,7 +18,10 @@ import { Login } from '../../domain/usuario-autenticacao/value-objects/login.val
 import { Nome } from '../../domain/usuario-autenticacao/value-objects/nome.value-object.js';
 import { SenhaHash } from '../../domain/usuario-autenticacao/value-objects/senha-hash.value-object.js';
 import { Telefone } from '../../domain/usuario-autenticacao/value-objects/telefone.value-object.js';
-import type { UsuarioRepository } from '../../application/usuario-autenticacao/ports/usuario.repository.js';
+import type {
+  OwnProfileData,
+  UsuarioRepository,
+} from '../../application/usuario-autenticacao/ports/usuario.repository.js';
 import type {
   CreateAdministradorRepositoryInput,
   CreatePacienteRepositoryInput,
@@ -47,6 +51,7 @@ interface UsuarioPersistenceRecord {
   dataCriacao: Date;
   dataAtualizacao: Date;
   ultimoAcesso: Date | null;
+  senhaTemporariaExpiraEm: Date | null;
   paciente: {
     enderecoId: string;
     endereco?: EnderecoPersistenceRecord | null;
@@ -128,7 +133,7 @@ export class PrismaUsuarioRepository
   async updatePasswordHash(
     id: string,
     senhaHash: string,
-    options?: { trocaSenhaObrigatoria?: boolean },
+    options?: { trocaSenhaObrigatoria?: boolean; senhaTemporariaExpiraEm?: Date | null },
   ): Promise<void> {
     await this.prisma.usuario.update({
       where: { id },
@@ -137,8 +142,35 @@ export class PrismaUsuarioRepository
         ...(options?.trocaSenhaObrigatoria !== undefined
           ? { trocaSenhaObrigatoria: options.trocaSenhaObrigatoria }
           : {}),
+        ...(options?.senhaTemporariaExpiraEm !== undefined
+          ? { senhaTemporariaExpiraEm: options.senhaTemporariaExpiraEm }
+          : {}),
       },
     });
+  }
+
+  async updateProfile(
+    id: string,
+    data: OwnProfileData,
+  ): Promise<PublicUsuario> {
+    try {
+      const record = await this.prisma.usuario.update({
+        where: { id },
+        data: {
+          ...(data.nome !== undefined ? { nome: data.nome } : {}),
+          ...(data.email !== undefined ? { email: data.email } : {}),
+          ...(data.telefone !== undefined ? { telefone: data.telefone } : {}),
+          ...(data.dataNascimento !== undefined
+            ? { dataNascimento: data.dataNascimento }
+            : {}),
+        },
+        include: usuarioInclude,
+      });
+
+      return this.toDomain(record).toPublic();
+    } catch (error) {
+      throw this.mapPersistenceError(error);
+    }
   }
 
   async listUsuarios(input: ListUsuariosInput): Promise<PaginatedUsuarios> {
@@ -186,6 +218,9 @@ export class PrismaUsuarioRepository
           dataNascimento: input.dataNascimento,
           status: 'ATIVO',
           trocaSenhaObrigatoria: input.trocaSenhaObrigatoria,
+          ...(input.senhaTemporariaExpiraEm !== undefined
+            ? { senhaTemporariaExpiraEm: input.senhaTemporariaExpiraEm }
+            : {}),
           administrador: {
             create: {
               permissoes: {
@@ -375,6 +410,7 @@ export class PrismaUsuarioRepository
       dataCriacao: record.dataCriacao,
       dataAtualizacao: record.dataAtualizacao,
       ultimoAcesso: record.ultimoAcesso,
+      senhaTemporariaExpiraEm: record.senhaTemporariaExpiraEm,
     });
   }
 

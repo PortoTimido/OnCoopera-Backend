@@ -54,6 +54,7 @@ export interface CreateAdministradorRepositoryInput extends UsuarioBaseData {
   senhaHash: string;
   permissoesAdministrativas: PermissaoAdministrativaNome[];
   trocaSenhaObrigatoria: boolean;
+  senhaTemporariaExpiraEm?: Date;
 }
 
 export interface UpdateAdministradorRepositoryInput {

@@ -32,6 +32,7 @@ export class ChangeTemporaryPasswordUseCase {
       usuario === null ||
       !usuario.isActive() ||
       !usuario.trocaSenhaObrigatoria
+      || (usuario.senhaTemporariaExpiraEm !== null && usuario.senhaTemporariaExpiraEm <= new Date())
     ) {
       throw new AuthApplicationError(
         'INVALID_CREDENTIALS',
@@ -64,6 +65,7 @@ export class ChangeTemporaryPasswordUseCase {
 
     await this.usuarios.updatePasswordHash(usuario.id, senhaHash, {
       trocaSenhaObrigatoria: false,
+      senhaTemporariaExpiraEm: null,
     });
     await this.sessions.revokeAllByUsuarioId(usuario.id, new Date());
   }

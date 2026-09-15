@@ -187,7 +187,7 @@ export class CreatePacienteSwaggerRequestDto {
 
   @ApiProperty({
     description:
-      'Senha com 12 a 72 bytes, contendo maiúscula, minúscula, número e símbolo.',
+      'Senha com 6 a 72 bytes, contendo maiúscula, minúscula, número e símbolo.',
     example: 'SenhaPaciente!123',
     writeOnly: true,
   })

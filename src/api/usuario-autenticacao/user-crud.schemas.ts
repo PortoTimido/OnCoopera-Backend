@@ -4,7 +4,7 @@ import {
   PERMISSOES_ADMINISTRATIVAS_CONHECIDAS,
 } from '../../domain/usuario-autenticacao/entities/usuario.entity.js';
 
-const dateSchema = z
+export const dateSchema = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/)
   .transform((value) => new Date(`${value}T00:00:00.000Z`));

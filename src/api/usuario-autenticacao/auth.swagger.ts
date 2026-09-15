@@ -25,7 +25,7 @@ export class ChangePasswordSwaggerRequestDto {
 
   @ApiProperty({
     description:
-      'Nova senha com 12 a 72 bytes, contendo maiúscula, minúscula, número e símbolo.',
+      'Nova senha com 6 a 72 bytes, contendo maiúscula, minúscula, número e símbolo.',
     example: 'SenhaNova!1234',
     writeOnly: true,
   })
@@ -48,11 +48,60 @@ export class ChangeTemporaryPasswordSwaggerRequestDto {
 
   @ApiProperty({
     description:
-      'Nova senha com 12 a 72 bytes, contendo maiúscula, minúscula, número e símbolo.',
+      'Nova senha com 6 a 72 bytes, contendo maiúscula, minúscula, número e símbolo.',
     example: 'SenhaDefinitiva!123',
     writeOnly: true,
   })
   novaSenha!: string;
+}
+
+export class PasswordRecoveryRequestSwaggerDto {
+  @ApiProperty({ format: 'email', example: 'usuario@example.com' })
+  email!: string;
+}
+
+export class PasswordRecoveryVerifySwaggerDto {
+  @ApiProperty({ format: 'email', example: 'usuario@example.com' })
+  email!: string;
+  @ApiProperty({ example: '483921' })
+  code!: string;
+}
+
+export class PasswordRecoveryResetSwaggerDto {
+  @ApiProperty({ writeOnly: true })
+  resetToken!: string;
+  @ApiProperty({ writeOnly: true, example: 'SenhaNova!123' })
+  newPassword!: string;
+  @ApiProperty({ writeOnly: true, example: 'SenhaNova!123' })
+  passwordConfirmation!: string;
+}
+
+export class UpdateOwnProfileSwaggerRequestDto {
+  @ApiPropertyOptional({
+    description: 'Novo nome completo do usuário autenticado.',
+    example: 'Ana Silva',
+  })
+  nome?: string;
+
+  @ApiPropertyOptional({
+    description: 'Novo email do usuário autenticado.',
+    example: 'ana.silva@example.com',
+    format: 'email',
+  })
+  email?: string;
+
+  @ApiPropertyOptional({
+    description: 'Novo telefone do usuário autenticado.',
+    example: '11999998888',
+  })
+  telefone?: string;
+
+  @ApiPropertyOptional({
+    description: 'Nova data de nascimento do usuário autenticado.',
+    example: '1990-05-20',
+    format: 'date',
+  })
+  dataNascimento?: string;
 }
 
 export class AuthenticatedUserSwaggerDto {

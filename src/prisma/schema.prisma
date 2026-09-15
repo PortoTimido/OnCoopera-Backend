@@ -13,6 +13,12 @@ enum StatusUsuario {
   BLOQUEADO
 }
 
+enum StatusEmailEnvio {
+  PENDENTE
+  ENVIADO
+  FALHOU
+}
+
 enum TipoApoio {
   ONG
   CLINICA
@@ -55,11 +61,56 @@ model Usuario {
   dataCriacao           DateTime             @default(now()) @map("data_criacao")
   dataAtualizacao       DateTime             @updatedAt @map("data_atualizacao")
   ultimoAcesso          DateTime?            @map("ultimo_acesso")
+  senhaTemporariaExpiraEm DateTime?          @map("senha_temporaria_expira_em")
   paciente              Paciente?
   administrador         Administrador?
   sessoes               SessaoAutenticacao[]
+  recuperacoesSenha     RecuperacaoSenha[]
 
   @@map("usuario")
+}
+
+model RecuperacaoSenha {
+  id                   String    @id @default(uuid()) @db.Uuid
+  usuarioId            String    @map("usuario_id") @db.Uuid
+  codigoHash           String    @map("codigo_hash")
+  expiraEm             DateTime  @map("expira_em")
+  tentativas           Int       @default(0)
+  bloqueadoEm          DateTime? @map("bloqueado_em")
+  codigoValidadoEm     DateTime? @map("codigo_validado_em")
+  resetTokenHash       String?   @map("reset_token_hash")
+  resetTokenExpiraEm   DateTime? @map("reset_token_expira_em")
+  tokenUtilizadoEm     DateTime? @map("token_utilizado_em")
+  criadoEm             DateTime  @default(now()) @map("criado_em")
+  usuario              Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId, criadoEm])
+  @@map("recuperacao_senha")
+}
+
+model LimiteRecuperacaoSenha {
+  id          String   @id @default(uuid()) @db.Uuid
+  emailHash   String   @map("email_hash")
+  ipHash      String   @map("ip_hash")
+  criadoEm    DateTime @default(now()) @map("criado_em")
+
+  @@index([emailHash, criadoEm])
+  @@index([ipHash, criadoEm])
+  @@map("limite_recuperacao_senha")
+}
+
+model EmailEnvio {
+  id                    String           @id @default(uuid()) @db.Uuid
+  tipo                  String
+  destinatarioMascarado String           @map("destinatario_mascarado")
+  status                StatusEmailEnvio @default(PENDENTE)
+  tentativas            Int              @default(0)
+  erroCodigo            String?          @map("erro_codigo")
+  enviadoEm             DateTime?        @map("enviado_em")
+  criadoEm              DateTime         @default(now()) @map("criado_em")
+
+  @@index([tipo, criadoEm])
+  @@map("email_envio")
 }
 
 model SessaoAutenticacao {

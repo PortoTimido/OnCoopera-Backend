@@ -52,6 +52,7 @@ export interface UsuarioProps {
   dataCriacao: Date;
   dataAtualizacao: Date;
   ultimoAcesso: Date | null;
+  senhaTemporariaExpiraEm?: Date | null;
 }
 
 export class Usuario {
@@ -73,6 +74,9 @@ export class Usuario {
     return this.props.senhaHash;
   }
 
+  get email(): string { return this.props.email.value; }
+  get nome(): string { return this.props.nome.value; }
+
   get status(): StatusUsuario {
     return this.props.status;
   }
@@ -87,6 +91,10 @@ export class Usuario {
 
   get trocaSenhaObrigatoria(): boolean {
     return this.props.trocaSenhaObrigatoria;
+  }
+
+  get senhaTemporariaExpiraEm(): Date | null {
+    return this.props.senhaTemporariaExpiraEm ?? null;
   }
 
   isActive(): boolean {
@@ -118,6 +126,27 @@ export class Usuario {
     return new Usuario({
       ...this.props,
       ultimoAcesso,
+    });
+  }
+
+  atualizarDadosPessoais(
+    data: {
+      nome?: Nome;
+      email?: Email;
+      telefone?: Telefone;
+      dataNascimento?: DataNascimento;
+    },
+    changedAt = new Date(),
+  ): Usuario {
+    return new Usuario({
+      ...this.props,
+      ...(data.nome !== undefined ? { nome: data.nome } : {}),
+      ...(data.email !== undefined ? { email: data.email } : {}),
+      ...(data.telefone !== undefined ? { telefone: data.telefone } : {}),
+      ...(data.dataNascimento !== undefined
+        ? { dataNascimento: data.dataNascimento }
+        : {}),
+      dataAtualizacao: changedAt,
     });
   }
 
