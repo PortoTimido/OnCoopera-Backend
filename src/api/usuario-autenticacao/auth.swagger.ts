@@ -195,6 +195,14 @@ export class AuthenticatedUserSwaggerDto {
     nullable: true,
   })
   ultimoAcesso!: string | null;
+
+  @ApiProperty({
+    description:
+      'URL temporária assinada para a imagem de perfil, quando cadastrada.',
+    example: 'https://minio.example.com/oncoopera-images/usuarios/...?...',
+    nullable: true,
+  })
+  imagemUrl!: string | null;
 }
 
 export class AuthSwaggerResponseDto {

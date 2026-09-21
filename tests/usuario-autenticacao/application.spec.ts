@@ -469,6 +469,12 @@ class InMemoryUsuarioRepository implements UsuarioRepository {
 
     return updated.toPublic();
   }
+
+  async findImagemObjectKey(): Promise<string | null> {
+    return null;
+  }
+
+  async setImagemObjectKey(): Promise<void> {}
 }
 
 class InMemoryAuthSessionRepository implements AuthSessionRepository {

@@ -35,6 +35,7 @@ export interface PublicUsuario {
   perfisAdministrativos: PermissaoAdministrativaNome[];
   trocaSenhaObrigatoria: boolean;
   ultimoAcesso: Date | null;
+  imagemUrl: string | null;
 }
 
 export interface UsuarioProps {
@@ -53,6 +54,7 @@ export interface UsuarioProps {
   dataAtualizacao: Date;
   ultimoAcesso: Date | null;
   senhaTemporariaExpiraEm?: Date | null;
+  imagemUrl?: string | null;
 }
 
 export class Usuario {
@@ -99,6 +101,10 @@ export class Usuario {
 
   get senhaTemporariaExpiraEm(): Date | null {
     return this.props.senhaTemporariaExpiraEm ?? null;
+  }
+
+  get imagemUrl(): string | null {
+    return this.props.imagemUrl ?? null;
   }
 
   isActive(): boolean {
@@ -168,6 +174,7 @@ export class Usuario {
       perfisAdministrativos: [...this.props.permissoesAdministrativas],
       trocaSenhaObrigatoria: this.props.trocaSenhaObrigatoria,
       ultimoAcesso: this.props.ultimoAcesso,
+      imagemUrl: this.props.imagemUrl ?? null,
     };
   }
 }

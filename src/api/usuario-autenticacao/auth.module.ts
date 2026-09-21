@@ -52,6 +52,15 @@ import { UpdateAdministradorUseCase } from '../../application/usuario-autenticac
 import { UpdateOwnProfileUseCase } from '../../application/usuario-autenticacao/use-cases/update-own-profile.use-case.js';
 import { UpdatePacienteUseCase } from '../../application/usuario-autenticacao/use-cases/update-paciente.use-case.js';
 import {
+  DeleteUsuarioImagemUseCase,
+  UploadUsuarioImagemUseCase,
+} from '../../application/usuario-autenticacao/use-cases/manage-usuario-imagem.use-cases.js';
+import {
+  IMAGE_STORAGE,
+  type ImageStorage,
+} from '../../application/armazenamento-imagem/image-storage.port.js';
+import { ArmazenamentoImagemModule } from '../../infrastructure/armazenamento-imagem/armazenamento-imagem.module.js';
+import {
   PASSWORD_RECOVERY_REPOSITORY,
   type PasswordRecoveryRepository,
 } from '../../application/usuario-autenticacao/ports/password-recovery.repository.js';
@@ -83,7 +92,7 @@ import { JwtAuthGuard } from './jwt-auth.guard.js';
 import { MobilePacientesController } from './mobile-pacientes.controller.js';
 
 @Module({
-  imports: [JwtModule.register({}), EmailModule],
+  imports: [JwtModule.register({}), EmailModule, ArmazenamentoImagemModule],
   controllers: [
     AuthController,
     BackofficeUsuariosController,
@@ -120,15 +129,15 @@ import { MobilePacientesController } from './mobile-pacientes.controller.js';
     },
     {
       provide: USUARIO_REPOSITORY,
-      useFactory: (prisma: PrismaService) =>
-        new PrismaUsuarioRepository(prisma),
-      inject: [PrismaService],
+      useFactory: (prisma: PrismaService, storage: ImageStorage) =>
+        new PrismaUsuarioRepository(prisma, storage),
+      inject: [PrismaService, IMAGE_STORAGE],
     },
     {
       provide: USUARIO_MANAGEMENT_REPOSITORY,
-      useFactory: (prisma: PrismaService) =>
-        new PrismaUsuarioRepository(prisma),
-      inject: [PrismaService],
+      useFactory: (prisma: PrismaService, storage: ImageStorage) =>
+        new PrismaUsuarioRepository(prisma, storage),
+      inject: [PrismaService, IMAGE_STORAGE],
     },
     {
       provide: AUTH_SESSION_REPOSITORY,
@@ -235,6 +244,18 @@ import { MobilePacientesController } from './mobile-pacientes.controller.js';
       useFactory: (usuarios: UsuarioRepository) =>
         new UpdateOwnProfileUseCase(usuarios),
       inject: [USUARIO_REPOSITORY],
+    },
+    {
+      provide: UploadUsuarioImagemUseCase,
+      useFactory: (usuarios: UsuarioRepository, storage: ImageStorage) =>
+        new UploadUsuarioImagemUseCase(usuarios, storage),
+      inject: [USUARIO_REPOSITORY, IMAGE_STORAGE],
+    },
+    {
+      provide: DeleteUsuarioImagemUseCase,
+      useFactory: (usuarios: UsuarioRepository, storage: ImageStorage) =>
+        new DeleteUsuarioImagemUseCase(usuarios, storage),
+      inject: [USUARIO_REPOSITORY, IMAGE_STORAGE],
     },
     {
       provide: ListUsuariosUseCase,

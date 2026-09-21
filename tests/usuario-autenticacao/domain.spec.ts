@@ -117,6 +117,34 @@ test.group('usuario-autenticacao domain', () => {
 
     assert.equal(paciente.toPublic().tipo, 'PACIENTE');
     assert.deepEqual(paciente.toPublic().permissoesAdministrativas, []);
+    assert.equal(paciente.toPublic().imagemUrl, null);
+  });
+
+  test('expõe imagemUrl quando cadastrada', ({ assert }) => {
+    const usuario = Usuario.create({
+      id: 'patient-2',
+      nome: Nome.create('Paciente Com Foto'),
+      email: Email.create('paciente.foto@example.com'),
+      login: Login.create('paciente.foto'),
+      senhaHash: SenhaHash.create('hashed-password'),
+      telefone: Telefone.fromString('11999998888'),
+      dataNascimento: DataNascimento.create(
+        new Date('1990-05-20T00:00:00.000Z'),
+      ),
+      status: 'ATIVO',
+      tipo: 'PACIENTE',
+      permissoesAdministrativas: [],
+      trocaSenhaObrigatoria: false,
+      dataCriacao: new Date('2026-01-01T00:00:00.000Z'),
+      dataAtualizacao: new Date('2026-01-01T00:00:00.000Z'),
+      ultimoAcesso: null,
+      imagemUrl: 'https://signed.example/usuarios/patient-2/foto.jpg',
+    });
+
+    assert.equal(
+      usuario.toPublic().imagemUrl,
+      'https://signed.example/usuarios/patient-2/foto.jpg',
+    );
   });
 
   test('hasPermissaoAdministrativa concede acesso via TOTAL ou permissão específica', ({

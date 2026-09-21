@@ -1,6 +1,8 @@
 import {
+  BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
   Headers,
   HttpCode,
@@ -10,13 +12,17 @@ import {
   Req,
   Res,
   UnauthorizedException,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
   ApiBody,
   ApiConflictResponse,
+  ApiConsumes,
   ApiCookieAuth,
   ApiForbiddenResponse,
   ApiHeader,
@@ -27,6 +33,11 @@ import {
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import type { Response } from 'express';
+import type { UploadableImage } from '../../application/armazenamento-imagem/image-storage.port.js';
+import {
+  DeleteUsuarioImagemUseCase,
+  UploadUsuarioImagemUseCase,
+} from '../../application/usuario-autenticacao/use-cases/manage-usuario-imagem.use-cases.js';
 import {
   AUTH_CONFIG,
   type AuthConfig,
@@ -94,6 +105,8 @@ export class AuthController {
   private readonly requestPasswordRecovery: RequestPasswordRecoveryUseCase;
   private readonly verifyPasswordRecovery: VerifyPasswordRecoveryCodeUseCase;
   private readonly resetPasswordWithToken: ResetPasswordWithTokenUseCase;
+  private readonly uploadUsuarioImagem: UploadUsuarioImagemUseCase;
+  private readonly deleteUsuarioImagem: DeleteUsuarioImagemUseCase;
   private readonly config: AuthConfig;
 
   constructor(
@@ -108,6 +121,8 @@ export class AuthController {
     requestPasswordRecovery: RequestPasswordRecoveryUseCase,
     verifyPasswordRecovery: VerifyPasswordRecoveryCodeUseCase,
     resetPasswordWithToken: ResetPasswordWithTokenUseCase,
+    uploadUsuarioImagem: UploadUsuarioImagemUseCase,
+    deleteUsuarioImagem: DeleteUsuarioImagemUseCase,
   ) {
     this.authenticateUser = authenticateUser;
     this.refreshSession = refreshSession;
@@ -119,6 +134,8 @@ export class AuthController {
     this.requestPasswordRecovery = requestPasswordRecovery;
     this.verifyPasswordRecovery = verifyPasswordRecovery;
     this.resetPasswordWithToken = resetPasswordWithToken;
+    this.uploadUsuarioImagem = uploadUsuarioImagem;
+    this.deleteUsuarioImagem = deleteUsuarioImagem;
     this.config = config;
   }
 
@@ -455,6 +472,78 @@ export class AuthController {
       throw mapAuthError(error);
     }
   }
+
+  @Post('me/imagem')
+  @UseGuards(JwtAuthGuard)
+  @UseInterceptors(FileInterceptor('imagem', { limits: { files: 1 } }))
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({
+    summary: 'Enviar ou substituir imagem de perfil do usuário autenticado',
+    description:
+      'Salva a imagem enviada no armazenamento de imagens e associa ao usuário autenticado, substituindo a imagem anterior quando existir.',
+  })
+  @ApiBearerAuth()
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['imagem'],
+      properties: { imagem: { type: 'string', format: 'binary' } },
+    },
+  })
+  @ApiOkResponse({
+    description: 'Imagem de perfil salva.',
+    type: AuthenticatedUserSwaggerDto,
+  })
+  @ApiBadRequestResponse({
+    description: 'Arquivo ausente ou inválido.',
+    type: ErrorSwaggerResponseDto,
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Access token ausente, inválido ou sessão revogada.',
+    type: ErrorSwaggerResponseDto,
+  })
+  async uploadOwnImage(
+    @Req() request: AuthenticatedRequest,
+    @UploadedFile() image?: UploadableImage,
+  ) {
+    try {
+      return await this.uploadUsuarioImagem.execute(
+        requireAuthContext(request).usuarioId,
+        requiredImage(image),
+      );
+    } catch (error) {
+      throw mapAuthError(error);
+    }
+  }
+
+  @Delete('me/imagem')
+  @HttpCode(204)
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({
+    summary: 'Remover imagem de perfil do usuário autenticado',
+    description:
+      'Remove a imagem de perfil do usuário autenticado, quando existir. Sem imagem cadastrada, a operação não tem efeito.',
+  })
+  @ApiBearerAuth()
+  @ApiNoContentResponse({ description: 'Imagem de perfil removida.' })
+  @ApiUnauthorizedResponse({
+    description: 'Access token ausente, inválido ou sessão revogada.',
+    type: ErrorSwaggerResponseDto,
+  })
+  async deleteOwnImage(@Req() request: AuthenticatedRequest): Promise<void> {
+    try {
+      await this.deleteUsuarioImagem.execute(
+        requireAuthContext(request).usuarioId,
+      );
+    } catch (error) {
+      throw mapAuthError(error);
+    }
+  }
+}
+
+function requiredImage(image?: UploadableImage): UploadableImage {
+  if (image === undefined) throw new BadRequestException('Envie uma imagem.');
+  return image;
 }
 
 function requireAuthContext(request: AuthenticatedRequest) {

@@ -412,6 +412,8 @@ function createEmptyUsuarioRepository(): UsuarioRepository {
     updateLastAccess: () => Promise.resolve(),
     updatePasswordHash: () => Promise.resolve(),
     updateProfile: () => Promise.reject(new Error('Não usado neste teste.')),
+    findImagemObjectKey: () => Promise.resolve(null),
+    setImagemObjectKey: () => Promise.resolve(),
   };
 }
 

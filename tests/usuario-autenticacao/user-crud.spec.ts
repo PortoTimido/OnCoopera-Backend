@@ -238,6 +238,7 @@ function createUsuarioDetails(input: {
       perfisAdministrativos: input.permissoesAdministrativas,
       trocaSenhaObrigatoria: false,
       ultimoAcesso: null,
+      imagemUrl: null,
     },
     endereco:
       input.tipo === 'PACIENTE'

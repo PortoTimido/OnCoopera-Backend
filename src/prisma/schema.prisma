@@ -62,6 +62,7 @@ model Usuario {
   dataAtualizacao       DateTime             @updatedAt @map("data_atualizacao")
   ultimoAcesso          DateTime?            @map("ultimo_acesso")
   senhaTemporariaExpiraEm DateTime?          @map("senha_temporaria_expira_em")
+  imagemObjectKey       String?              @map("imagem_object_key")
   paciente              Paciente?
   administrador         Administrador?
   sessoes               SessaoAutenticacao[]

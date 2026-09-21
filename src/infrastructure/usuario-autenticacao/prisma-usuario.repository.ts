@@ -12,6 +12,7 @@ import {
   PERMISSOES_ADMINISTRATIVAS_CONHECIDAS,
 } from '../../domain/usuario-autenticacao/entities/usuario.entity.js';
 import { AuthApplicationError } from '../../application/usuario-autenticacao/errors/auth-application.error.js';
+import type { ImageStorage } from '../../application/armazenamento-imagem/image-storage.port.js';
 import { DataNascimento } from '../../domain/usuario-autenticacao/value-objects/data-nascimento.value-object.js';
 import { Email } from '../../domain/usuario-autenticacao/value-objects/email.value-object.js';
 import { Login } from '../../domain/usuario-autenticacao/value-objects/login.value-object.js';
@@ -52,6 +53,7 @@ interface UsuarioPersistenceRecord {
   dataAtualizacao: Date;
   ultimoAcesso: Date | null;
   senhaTemporariaExpiraEm: Date | null;
+  imagemObjectKey: string | null;
   paciente: {
     enderecoId: string;
     endereco?: EnderecoPersistenceRecord | null;
@@ -96,9 +98,11 @@ export class PrismaUsuarioRepository
   implements UsuarioRepository, UsuarioManagementRepository
 {
   private readonly prisma: PrismaService;
+  private readonly storage: ImageStorage;
 
-  constructor(prisma: PrismaService) {
+  constructor(prisma: PrismaService, storage: ImageStorage) {
     this.prisma = prisma;
+    this.storage = storage;
   }
 
   async findByIdentifier(identifier: string): Promise<Usuario | null> {
@@ -111,7 +115,7 @@ export class PrismaUsuarioRepository
       include: usuarioInclude,
     });
 
-    return record === null ? null : this.toDomain(record);
+    return record === null ? null : await this.toDomain(record);
   }
 
   async findById(id: string): Promise<Usuario | null> {
@@ -120,7 +124,29 @@ export class PrismaUsuarioRepository
       include: usuarioInclude,
     });
 
-    return record === null ? null : this.toDomain(record);
+    return record === null ? null : await this.toDomain(record);
+  }
+
+  async findImagemObjectKey(id: string): Promise<string | null> {
+    const record = await this.prisma.usuario.findUnique({
+      where: { id },
+      select: { imagemObjectKey: true },
+    });
+    return record?.imagemObjectKey ?? null;
+  }
+
+  async setImagemObjectKey(
+    id: string,
+    objectKey: string | null,
+  ): Promise<void> {
+    try {
+      await this.prisma.usuario.update({
+        where: { id },
+        data: { imagemObjectKey: objectKey },
+      });
+    } catch (error) {
+      throw this.mapPersistenceError(error);
+    }
   }
 
   async updateLastAccess(id: string, ultimoAcesso: Date): Promise<void> {
@@ -170,7 +196,7 @@ export class PrismaUsuarioRepository
         include: usuarioInclude,
       });
 
-      return this.toDomain(record).toPublic();
+      return (await this.toDomain(record)).toPublic();
     } catch (error) {
       throw this.mapPersistenceError(error);
     }
@@ -190,7 +216,9 @@ export class PrismaUsuarioRepository
     ]);
 
     return {
-      data: records.map((record) => this.toDomain(record).toPublic()),
+      data: await Promise.all(
+        records.map(async (record) => (await this.toDomain(record)).toPublic()),
+      ),
       page: input.page,
       pageSize: input.pageSize,
       total,
@@ -394,7 +422,12 @@ export class PrismaUsuarioRepository
     });
   }
 
-  private toDomain(record: UsuarioPersistenceRecord): Usuario {
+  private async toDomain(record: UsuarioPersistenceRecord): Promise<Usuario> {
+    const imagemUrl =
+      record.imagemObjectKey === null
+        ? null
+        : await this.storage.getTemporaryUrl(record.imagemObjectKey);
+
     return Usuario.create({
       id: record.id,
       nome: Nome.create(record.nome),
@@ -414,6 +447,7 @@ export class PrismaUsuarioRepository
       dataAtualizacao: record.dataAtualizacao,
       ultimoAcesso: record.ultimoAcesso,
       senhaTemporariaExpiraEm: record.senhaTemporariaExpiraEm,
+      imagemUrl,
     });
   }
 
@@ -421,7 +455,7 @@ export class PrismaUsuarioRepository
     record: UsuarioPersistenceRecord,
   ): Promise<UsuarioDetails> {
     return {
-      usuario: this.toDomain(record).toPublic(),
+      usuario: (await this.toDomain(record)).toPublic(),
       endereco:
         record.paciente?.endereco === undefined ||
         record.paciente.endereco === null

@@ -21,6 +21,8 @@ export interface UsuarioRepository {
     },
   ): Promise<void>;
   updateProfile(id: string, data: OwnProfileData): Promise<PublicUsuario>;
+  findImagemObjectKey(id: string): Promise<string | null>;
+  setImagemObjectKey(id: string, objectKey: string | null): Promise<void>;
 }
 
 export const USUARIO_REPOSITORY = Symbol('USUARIO_REPOSITORY');

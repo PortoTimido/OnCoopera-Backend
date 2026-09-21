@@ -8,6 +8,18 @@ import {
   UploadArtigoImagemUseCase,
 } from '../../src/application/artigo/use-cases/manage-artigo-imagem.use-cases.js';
 import { DeleteApoioImagemUseCase } from '../../src/application/radar-apoio/use-cases/manage-apoio-imagem.use-cases.js';
+import {
+  DeleteUsuarioImagemUseCase,
+  UploadUsuarioImagemUseCase,
+} from '../../src/application/usuario-autenticacao/use-cases/manage-usuario-imagem.use-cases.js';
+import { AuthApplicationError } from '../../src/application/usuario-autenticacao/errors/auth-application.error.js';
+import { Usuario } from '../../src/domain/usuario-autenticacao/entities/usuario.entity.js';
+import { DataNascimento } from '../../src/domain/usuario-autenticacao/value-objects/data-nascimento.value-object.js';
+import { Email } from '../../src/domain/usuario-autenticacao/value-objects/email.value-object.js';
+import { Login } from '../../src/domain/usuario-autenticacao/value-objects/login.value-object.js';
+import { Nome } from '../../src/domain/usuario-autenticacao/value-objects/nome.value-object.js';
+import { SenhaHash } from '../../src/domain/usuario-autenticacao/value-objects/senha-hash.value-object.js';
+import { Telefone } from '../../src/domain/usuario-autenticacao/value-objects/telefone.value-object.js';
 import type { UploadableImage } from '../../src/application/armazenamento-imagem/image-storage.port.js';
 
 const jpeg: UploadableImage = {
@@ -102,14 +114,66 @@ test.group('armazenamento de imagens', () => {
     assert.deepEqual(storage.removed, ['artigos/artigo-1/old.jpg']);
     assert.equal(repository.objectKey, null);
   });
+
+  test('substitui imagem de perfil do usuário somente apÃ³s persistir', async ({
+    assert,
+  }) => {
+    const storage = new MemoryStorage();
+    const repository = new UsuarioImageRepository();
+    const useCase = new UploadUsuarioImagemUseCase(repository, storage);
+
+    const updated = await useCase.execute('usuario-1', jpeg);
+
+    assert.deepEqual(storage.removed, ['usuarios/usuario-1/old.jpg']);
+    assert.equal(repository.objectKey, 'usuarios/usuario-1/new.jpg');
+    assert.equal(updated.id, 'usuario-1');
+
+    repository.failSave = true;
+    const error = await capture(() => useCase.execute('usuario-1', jpeg));
+    assert.instanceOf(error, Error);
+    assert.equal(storage.removed.at(-1), 'usuarios/usuario-1/new.jpg');
+  });
+
+  test('rejeita upload/remoção de imagem para usuário inexistente ou inativo', async ({
+    assert,
+  }) => {
+    const storage = new MemoryStorage();
+    const repository = new UsuarioImageRepository();
+    repository.usuario = null;
+    const uploadUseCase = new UploadUsuarioImagemUseCase(repository, storage);
+    const deleteUseCase = new DeleteUsuarioImagemUseCase(repository, storage);
+
+    const uploadError = await capture(() =>
+      uploadUseCase.execute('usuario-1', jpeg),
+    );
+    const deleteError = await capture(() => deleteUseCase.execute('usuario-1'));
+
+    assert.instanceOf(uploadError, AuthApplicationError);
+    assert.instanceOf(deleteError, AuthApplicationError);
+  });
+
+  test('exclui imagem de perfil do usuário de forma idempotente', async ({
+    assert,
+  }) => {
+    const storage = new MemoryStorage();
+    const repository = new UsuarioImageRepository();
+    const useCase = new DeleteUsuarioImagemUseCase(repository, storage);
+
+    await useCase.execute('usuario-1');
+    assert.deepEqual(storage.removed, ['usuarios/usuario-1/old.jpg']);
+    assert.equal(repository.objectKey, null);
+
+    await useCase.execute('usuario-1');
+    assert.deepEqual(storage.removed, ['usuarios/usuario-1/old.jpg']);
+  });
 });
 
 class MemoryStorage {
   readonly removed: string[] = [];
 
-  async upload() {
+  async upload(folder: string) {
     return {
-      objectKey: 'artigos/artigo-1/new.jpg',
+      objectKey: `${folder}/new.jpg`,
       mimeType: 'image/jpeg',
       size: 4,
     };
@@ -143,6 +207,47 @@ class ArticleImageRepository {
     if (this.failSave) throw new Error('falha de banco');
     this.objectKey = objectKey;
   }
+}
+
+class UsuarioImageRepository {
+  objectKey: string | null = 'usuarios/usuario-1/old.jpg';
+  failSave = false;
+  usuario: Usuario | null = buildUsuario();
+
+  async findById() {
+    return this.usuario;
+  }
+
+  async findImagemObjectKey() {
+    return this.objectKey;
+  }
+
+  async setImagemObjectKey(
+    _id: string,
+    objectKey: string | null,
+  ): Promise<void> {
+    if (this.failSave) throw new Error('falha de banco');
+    this.objectKey = objectKey;
+  }
+}
+
+function buildUsuario(): Usuario {
+  return Usuario.create({
+    id: 'usuario-1',
+    nome: Nome.create('Usuário Teste'),
+    email: Email.create('usuario.teste@example.com'),
+    login: Login.create('usuario.teste'),
+    senhaHash: SenhaHash.create('hashed-password'),
+    telefone: Telefone.fromString('11999998888'),
+    dataNascimento: DataNascimento.create(new Date('1990-05-20T00:00:00.000Z')),
+    status: 'ATIVO',
+    tipo: 'PACIENTE',
+    permissoesAdministrativas: [],
+    trocaSenhaObrigatoria: false,
+    dataCriacao: new Date('2026-01-01T00:00:00.000Z'),
+    dataAtualizacao: new Date('2026-01-01T00:00:00.000Z'),
+    ultimoAcesso: null,
+  });
 }
 
 function config() {
