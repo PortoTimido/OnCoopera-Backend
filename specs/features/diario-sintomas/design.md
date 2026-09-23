@@ -10,7 +10,7 @@ O módulo segue API → Application → Domain, com Prisma e armazenamento local
 
 ## Áudio
 
-Uploads são validados na borda e persistidos com UUID no diretório `VOICE_NOTES_UPLOAD_DIR`. A chave é mantida em `nota_voz_url`; o conteúdo é servido por endpoint autenticado, não por diretório público.
+Uploads são validados na borda e persistidos com chave UUID no MinIO (bucket `MINIO_BUCKET`, prefixo `diario-sintomas/notas-voz/`), via `MinioVoiceNoteStorage`. A chave (objectKey) é mantida em `nota_voz_url`; o conteúdo é servido por endpoint autenticado, que lê o objeto do MinIO e faz o streaming — não por diretório público.
 
 ## Contratos
 

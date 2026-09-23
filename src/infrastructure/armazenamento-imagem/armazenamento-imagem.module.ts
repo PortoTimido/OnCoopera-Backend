@@ -24,6 +24,6 @@ import {
     MinioImageStorageService,
     { provide: IMAGE_STORAGE, useExisting: MinioImageStorageService },
   ],
-  exports: [IMAGE_STORAGE],
+  exports: [IMAGE_STORAGE, MINIO_CLIENT],
 })
 export class ArmazenamentoImagemModule {}

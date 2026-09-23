@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import type { Client } from 'minio';
 import {
   DIARIO_SINTOMAS_REPOSITORY,
   type DiarioSintomasRepository,
@@ -14,15 +16,17 @@ import {
   SaveRegistroHojeUseCase,
   UpdateRegistroHojeUseCase,
 } from '../../application/diario-sintomas/use-cases/diario-sintomas.use-cases.js';
-import { LocalVoiceNoteStorage } from '../../infrastructure/diario-sintomas/local-voice-note.storage.js';
+import { MINIO_CLIENT } from '../../infrastructure/armazenamento-imagem/minio-image-storage.service.js';
+import { MinioVoiceNoteStorage } from '../../infrastructure/diario-sintomas/minio-voice-note.storage.js';
 import { PrismaDiarioSintomasRepository } from '../../infrastructure/diario-sintomas/prisma-diario-sintomas.repository.js';
 import { PrismaService } from '../../infrastructure/database/prisma.service.js';
+import { ArmazenamentoImagemModule } from '../../infrastructure/armazenamento-imagem/armazenamento-imagem.module.js';
 import { AuthModule } from '../usuario-autenticacao/auth.module.js';
 import { MobileDiarioSintomasController } from './mobile-diario-sintomas.controller.js';
 import { PatientDiarioGuard } from './patient-diario.guard.js';
 
 @Module({
-  imports: [AuthModule],
+  imports: [AuthModule, ArmazenamentoImagemModule],
   controllers: [MobileDiarioSintomasController],
   providers: [
     {
@@ -33,7 +37,9 @@ import { PatientDiarioGuard } from './patient-diario.guard.js';
     },
     {
       provide: VOICE_NOTE_STORAGE,
-      useFactory: () => new LocalVoiceNoteStorage(),
+      useFactory: (client: Client, config: ConfigService) =>
+        new MinioVoiceNoteStorage(client, config),
+      inject: [MINIO_CLIENT, ConfigService],
     },
     {
       provide: ListRegistrosDiariosUseCase,
