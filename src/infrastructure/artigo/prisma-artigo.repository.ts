@@ -7,6 +7,7 @@ import type {
 } from '../../domain/artigo/entities/artigo.entity.js';
 import { ConteudoArtigo } from '../../domain/artigo/value-objects/conteudo-artigo.value-object.js';
 import { ImagemUrl } from '../../domain/artigo/value-objects/imagem-url.value-object.js';
+import { ResumoArtigo } from '../../domain/artigo/value-objects/resumo-artigo.value-object.js';
 import { TempoLeitura } from '../../domain/artigo/value-objects/tempo-leitura.value-object.js';
 import { TituloArtigo } from '../../domain/artigo/value-objects/titulo-artigo.value-object.js';
 import { ArtigoApplicationError } from '../../application/artigo/errors/artigo-application.error.js';
@@ -25,6 +26,7 @@ interface ArtigoPersistenceRecord {
   id: string;
   autorId: string;
   titulo: string;
+  resumo: string | null;
   conteudo: string;
   tempoLeituraMinutos: number;
   imagemObjectKey: string | null;
@@ -112,6 +114,7 @@ export class PrismaArtigoRepository implements ArtigoRepository {
         data: {
           autorId: input.autorId,
           titulo: input.titulo,
+          resumo: input.resumo,
           conteudo: input.conteudo,
           tempoLeituraMinutos: input.tempoLeituraMinutos,
           imagemObjectKey: input.imagemObjectKey,
@@ -378,6 +381,7 @@ export class PrismaArtigoRepository implements ArtigoRepository {
       id: record.id,
       autorId: record.autorId,
       titulo: TituloArtigo.create(record.titulo),
+      resumo: record.resumo === null ? null : ResumoArtigo.create(record.resumo),
       conteudo: ConteudoArtigo.create(record.conteudo),
       tempoLeitura: TempoLeitura.create(record.tempoLeituraMinutos),
       imagemUrl: imagemUrl === null ? null : ImagemUrl.create(imagemUrl),
@@ -427,6 +431,7 @@ function toArtigoUpdateData(
 ): Prisma.ArtigoUpdateInput {
   return {
     ...(input.titulo !== undefined ? { titulo: input.titulo } : {}),
+    ...(input.resumo !== undefined ? { resumo: input.resumo } : {}),
     ...(input.conteudo !== undefined ? { conteudo: input.conteudo } : {}),
     ...(input.tempoLeituraMinutos !== undefined
       ? { tempoLeituraMinutos: input.tempoLeituraMinutos }

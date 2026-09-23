@@ -266,6 +266,7 @@ model Artigo {
   id                  String            @id @default(uuid()) @db.Uuid
   autorId             String            @map("autor_id") @db.Uuid
   titulo              String
+  resumo              String?           @db.Text
   conteudo            String            @db.Text
   tempoLeituraMinutos Int               @map("tempo_leitura_minutos")
   imagemObjectKey     String?           @map("imagem_object_key")

@@ -89,6 +89,7 @@ function createArtigo(
     id: 'artigo-1',
     autorId: 'admin-1',
     titulo: TituloArtigo.create('Titulo'),
+    resumo: null,
     conteudo: ConteudoArtigo.create('Conteudo'),
     tempoLeitura: TempoLeitura.create(3),
     imagemUrl: null,

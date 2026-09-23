@@ -40,6 +40,7 @@ export const listPublishedArtigosQuerySchema = z
 export const createArtigoSchema = z
   .object({
     titulo: z.string().trim().min(1).max(160),
+    resumo: z.string().trim().max(250).nullable().optional().default(null),
     conteudo: z.string().trim().min(1),
     tempoLeituraMinutos: z.coerce.number().int().min(1),
     imagemUrl: z.string().trim().url().nullable().optional().default(null),
@@ -52,6 +53,7 @@ export const createArtigoSchema = z
 export const updateArtigoSchema = z
   .object({
     titulo: z.string().trim().min(1).max(160).optional(),
+    resumo: z.string().trim().max(250).nullable().optional(),
     conteudo: z.string().trim().min(1).optional(),
     tempoLeituraMinutos: z.coerce.number().int().min(1).optional(),
     imagemUrl: z.string().trim().url().nullable().optional(),

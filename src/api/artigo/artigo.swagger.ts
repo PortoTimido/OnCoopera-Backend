@@ -42,6 +42,12 @@ export class ArtigoSwaggerDto {
   @ApiProperty({ example: 'Como se preparar para uma consulta' })
   titulo!: string;
 
+  @ApiProperty({
+    nullable: true,
+    example: 'Um breve resumo do artigo.',
+  })
+  resumo!: string | null;
+
   @ApiProperty({ example: 'Conteúdo completo do artigo.' })
   conteudo!: string;
 
@@ -97,6 +103,12 @@ export class CreateArtigoSwaggerRequestDto {
   @ApiProperty({ example: 'Como se preparar para uma consulta' })
   titulo!: string;
 
+  @ApiPropertyOptional({
+    nullable: true,
+    example: 'Um breve resumo do artigo.',
+  })
+  resumo?: string | null;
+
   @ApiProperty({ example: 'Conteúdo completo do artigo.' })
   conteudo!: string;
 
@@ -127,6 +139,12 @@ export class CreateArtigoSwaggerRequestDto {
 export class UpdateArtigoSwaggerRequestDto {
   @ApiPropertyOptional({ example: 'Como se preparar para uma consulta' })
   titulo?: string;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    example: 'Um breve resumo do artigo.',
+  })
+  resumo?: string | null;
 
   @ApiPropertyOptional({ example: 'Conteúdo completo do artigo.' })
   conteudo?: string;

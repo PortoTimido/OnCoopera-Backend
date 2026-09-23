@@ -148,6 +148,7 @@ test.group('artigo API contracts', () => {
       } as AuthenticatedRequest,
       {
         titulo: 'Artigo',
+        resumo: null,
         conteudo: 'Conteudo',
         tempoLeituraMinutos: 3,
         imagemUrl: null,

@@ -28,6 +28,7 @@ export interface PaginatedArtigos {
 export interface CreateArtigoRepositoryInput {
   autorId: string;
   titulo: string;
+  resumo: string | null;
   conteudo: string;
   tempoLeituraMinutos: number;
   imagemObjectKey: string | null;
@@ -40,6 +41,7 @@ export interface CreateArtigoRepositoryInput {
 export interface UpdateArtigoRepositoryInput {
   id: string;
   titulo?: string;
+  resumo?: string | null;
   conteudo?: string;
   tempoLeituraMinutos?: number;
   imagemObjectKey?: string | null;

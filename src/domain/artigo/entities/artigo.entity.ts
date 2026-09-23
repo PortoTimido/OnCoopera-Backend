@@ -1,5 +1,6 @@
 import { ConteudoArtigo } from '../value-objects/conteudo-artigo.value-object.js';
 import { ImagemUrl } from '../value-objects/imagem-url.value-object.js';
+import { ResumoArtigo } from '../value-objects/resumo-artigo.value-object.js';
 import { TempoLeitura } from '../value-objects/tempo-leitura.value-object.js';
 import { TituloArtigo } from '../value-objects/titulo-artigo.value-object.js';
 import { DomainValidationError } from '../errors/domain-validation.error.js';
@@ -16,6 +17,7 @@ export interface PublicArtigo {
   id: string;
   autorId: string;
   titulo: string;
+  resumo: string | null;
   conteudo: string;
   tempoLeituraMinutos: number;
   imagemUrl: string | null;
@@ -31,6 +33,7 @@ export interface ArtigoProps {
   id: string;
   autorId: string;
   titulo: TituloArtigo;
+  resumo: ResumoArtigo | null;
   conteudo: ConteudoArtigo;
   tempoLeitura: TempoLeitura;
   imagemUrl: ImagemUrl | null;
@@ -110,6 +113,7 @@ export class Artigo {
       id: this.props.id,
       autorId: this.props.autorId,
       titulo: this.props.titulo.value,
+      resumo: this.props.resumo?.value ?? null,
       conteudo: this.props.conteudo.value,
       tempoLeituraMinutos: this.props.tempoLeitura.calcularMinutos(),
       imagemUrl: this.props.imagemUrl?.value ?? null,

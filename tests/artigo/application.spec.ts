@@ -290,6 +290,7 @@ function createArtigo(overrides: Partial<PublicArtigo> = {}): PublicArtigo {
     id: 'artigo-1',
     autorId: 'admin-1',
     titulo: 'Titulo',
+    resumo: null,
     conteudo: 'Conteudo',
     tempoLeituraMinutos: 3,
     imagemUrl: null,

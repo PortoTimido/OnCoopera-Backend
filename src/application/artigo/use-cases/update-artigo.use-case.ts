@@ -1,4 +1,5 @@
 import { ConteudoArtigo } from '../../../domain/artigo/value-objects/conteudo-artigo.value-object.js';
+import { ResumoArtigo } from '../../../domain/artigo/value-objects/resumo-artigo.value-object.js';
 import { TempoLeitura } from '../../../domain/artigo/value-objects/tempo-leitura.value-object.js';
 import { TituloArtigo } from '../../../domain/artigo/value-objects/titulo-artigo.value-object.js';
 import type {
@@ -10,6 +11,7 @@ import type { ArtigoRepository } from '../ports/artigo.repository.js';
 
 export interface UpdateArtigoInput {
   titulo?: string;
+  resumo?: string | null;
   conteudo?: string;
   tempoLeituraMinutos?: number;
   status?: StatusArtigo;
@@ -38,6 +40,14 @@ export class UpdateArtigoUseCase {
       id,
       ...(input.titulo !== undefined
         ? { titulo: TituloArtigo.create(input.titulo).value }
+        : {}),
+      ...(input.resumo !== undefined
+        ? {
+            resumo:
+              input.resumo === null || input.resumo.trim().length === 0
+                ? null
+                : ResumoArtigo.create(input.resumo).value,
+          }
         : {}),
       ...(input.conteudo !== undefined
         ? { conteudo: ConteudoArtigo.create(input.conteudo).value }
