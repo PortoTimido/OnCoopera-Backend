@@ -34,4 +34,7 @@ COPY --from=builder /usr/src/app/src/prisma/schema.prisma ./src/prisma/schema.pr
 
 EXPOSE 3000
 
-CMD ["node", "dist/src/main"]
+# Keep the database schema in sync with the generated Prisma client before the
+# API starts accepting requests. `migrate deploy` is idempotent and applies
+# only migrations that have not yet run.
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/src/main.js"]
