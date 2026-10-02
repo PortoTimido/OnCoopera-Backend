@@ -8,6 +8,7 @@ import { AuthModule } from './api/usuario-autenticacao/auth.module.js';
 import { PrismaModule } from './infrastructure/database/prisma.module.js';
 import { DiarioSintomasModule } from './api/diario-sintomas/diario-sintomas.module.js';
 import { ArmazenamentoImagemModule } from './infrastructure/armazenamento-imagem/armazenamento-imagem.module.js';
+import { DashboardModule } from './api/dashboard/dashboard.module.js';
 import { validateEnvironment } from './app.config.js';
 
 @Module({
@@ -22,6 +23,7 @@ import { validateEnvironment } from './app.config.js';
     ArtigoModule,
     RadarApoioModule,
     DiarioSintomasModule,
+    DashboardModule,
   ],
   controllers: [AppController],
   providers: [AppService],

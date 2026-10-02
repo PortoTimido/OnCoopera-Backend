@@ -24,6 +24,7 @@ export interface ListApoiosInput {
   cidade?: string;
   latitude?: number;
   longitude?: number;
+  radiusKm?: number;
   onlyActive?: boolean;
 }
 export interface PaginatedApoios {

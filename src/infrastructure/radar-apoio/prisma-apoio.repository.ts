@@ -63,11 +63,14 @@ export class PrismaApoioRepository implements ApoioRepository {
           : { skip: (input.page - 1) * input.pageSize, take: input.pageSize }),
       }),
     ]);
-    const data = await Promise.all(
+    const mappedData = await Promise.all(
       records.map(async (record) =>
         this.toPublic(record, input.latitude, input.longitude),
       ),
     );
+    const data = input.radiusKm === undefined
+      ? mappedData
+      : mappedData.filter((item) => item.distanciaKm !== undefined && item.distanciaKm <= input.radiusKm!);
     if (nearby)
       data.sort(
         (a, b) => (a.distanciaKm ?? Infinity) - (b.distanciaKm ?? Infinity),
@@ -82,8 +85,8 @@ export class PrismaApoioRepository implements ApoioRepository {
       data: paged,
       page: input.page,
       pageSize: input.pageSize,
-      total,
-      totalPages: Math.ceil(total / input.pageSize),
+      total: input.radiusKm === undefined ? total : data.length,
+      totalPages: Math.ceil((input.radiusKm === undefined ? total : data.length) / input.pageSize),
     };
   }
   async findById(id: string, onlyActive = false): Promise<PublicApoio | null> {

@@ -57,7 +57,7 @@ export class MobileApoiosController {
     @Query(new ZodValidationPipe(listActiveApoiosQuerySchema))
     query: ListActiveApoiosQuery,
   ) {
-    return this.listApoios.execute({ ...query, onlyActive: true });
+    return this.listApoios.execute({ ...query, onlyActive: true, radiusKm: 10 });
   }
 
   @Get(':id')
