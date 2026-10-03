@@ -191,15 +191,23 @@ export class AuthController {
   @HttpCode(200)
   @ApiOperation({ summary: 'Solicitar recuperação de senha' })
   @ApiBody({ type: PasswordRecoveryRequestSwaggerDto })
+  @ApiForbiddenResponse({
+    description: 'Recuperação de senha disponível apenas para administradores.',
+    type: ErrorSwaggerResponseDto,
+  })
   async requestRecovery(
     @Req() request: AuthenticatedRequest,
     @Body(new ZodValidationPipe(passwordRecoveryRequestSchema))
     body: PasswordRecoveryRequestBody,
   ) {
-    await this.requestPasswordRecovery.execute({
-      email: body.email,
-      ip: request.ip || request.socket.remoteAddress || 'unknown',
-    });
+    try {
+      await this.requestPasswordRecovery.execute({
+        email: body.email,
+        ip: request.ip || request.socket.remoteAddress || 'unknown',
+      });
+    } catch (error) {
+      throw mapAuthError(error);
+    }
     return {
       message:
         'Se o e-mail estiver cadastrado, você receberá as instruções para redefinir sua senha.',
@@ -210,6 +218,10 @@ export class AuthController {
   @HttpCode(200)
   @ApiOperation({ summary: 'Validar código de recuperação de senha' })
   @ApiBody({ type: PasswordRecoveryVerifySwaggerDto })
+  @ApiForbiddenResponse({
+    description: 'Recuperação de senha disponível apenas para administradores.',
+    type: ErrorSwaggerResponseDto,
+  })
   async verifyRecovery(
     @Body(new ZodValidationPipe(passwordRecoveryVerifySchema))
     body: PasswordRecoveryVerifyBody,
@@ -225,6 +237,10 @@ export class AuthController {
   @HttpCode(204)
   @ApiOperation({ summary: 'Redefinir senha com token de recuperação' })
   @ApiBody({ type: PasswordRecoveryResetSwaggerDto })
+  @ApiForbiddenResponse({
+    description: 'Recuperação de senha disponível apenas para administradores.',
+    type: ErrorSwaggerResponseDto,
+  })
   async resetRecovery(
     @Body(new ZodValidationPipe(passwordRecoveryResetSchema))
     body: PasswordRecoveryResetBody,

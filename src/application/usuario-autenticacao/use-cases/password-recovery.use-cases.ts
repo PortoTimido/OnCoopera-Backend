@@ -7,6 +7,7 @@ import type { PasswordRecoveryRepository } from '../ports/password-recovery.repo
 import type { SecretGenerator } from '../ports/secret-generator.js';
 import type { TokenHasher } from '../ports/token-hasher.js';
 import type { UsuarioRepository } from '../ports/usuario.repository.js';
+import type { Usuario } from '../../../domain/usuario-autenticacao/entities/usuario.entity.js';
 import type { AuthSessionRepository } from '../ports/auth-session.repository.js';
 import { passwordRecoveryTemplate } from '../../../infrastructure/email/templates.js';
 import { AuthApplicationError } from '../errors/auth-application.error.js';
@@ -21,6 +22,10 @@ export class RequestPasswordRecoveryUseCase {
   ) {}
   async execute(input: { email: string; ip: string }): Promise<void> {
     const email = input.email.trim().toLowerCase();
+    const usuario = await this.usuarios.findByIdentifier(email);
+    if (!isEligiblePasswordRecoveryAdministrator(usuario, email))
+      throw passwordRecoveryRestrictedToAdministrators();
+
     const now = new Date();
     const emailHash = this.tokens.hash(email);
     const ipHash = this.tokens.hash(input.ip);
@@ -41,9 +46,6 @@ export class RequestPasswordRecoveryUseCase {
     )
       return;
     await this.recoveries.registerRequest({ emailHash, ipHash });
-    const usuario = await this.usuarios.findByIdentifier(email);
-    if (usuario === null || !usuario.isActive() || usuario.email !== email)
-      return;
     await this.recoveries.invalidateActiveByUsuarioId(usuario.id, now);
     const codigo = String(randomInt(0, 1_000_000)).padStart(6, '0');
     await this.recoveries.create({
@@ -78,11 +80,10 @@ export class VerifyPasswordRecoveryCodeUseCase {
     email: string;
     code: string;
   }): Promise<{ resetToken: string }> {
-    const usuario = await this.usuarios.findByIdentifier(
-      input.email.trim().toLowerCase(),
-    );
-    if (!usuario || usuario.email !== input.email.trim().toLowerCase())
-      throw invalidCode();
+    const email = input.email.trim().toLowerCase();
+    const usuario = await this.usuarios.findByIdentifier(email);
+    if (!isEligiblePasswordRecoveryAdministrator(usuario, email))
+      throw passwordRecoveryRestrictedToAdministrators();
     const recovery = await this.recoveries.findLatestByUsuarioId(usuario.id);
     const now = new Date();
     if (
@@ -144,6 +145,9 @@ export class ResetPasswordWithTokenUseCase {
       recovery.resetTokenExpiraEm <= now
     )
       throw invalidCode();
+    const usuario = await this.usuarios.findById(recovery.usuarioId);
+    if (!isEligiblePasswordRecoveryAdministrator(usuario))
+      throw passwordRecoveryRestrictedToAdministrators();
     try {
       assertValidPlainPassword(input.newPassword);
     } catch (error) {
@@ -165,5 +169,24 @@ function invalidCode() {
   return new AuthApplicationError(
     'INVALID_CREDENTIALS',
     'Código ou token de recuperação inválido ou expirado.',
+  );
+}
+
+function isEligiblePasswordRecoveryAdministrator(
+  usuario: Usuario | null,
+  email?: string,
+): usuario is Usuario {
+  return (
+    usuario !== null &&
+    usuario.isActive() &&
+    usuario.tipo === 'ADMINISTRADOR' &&
+    (email === undefined || usuario.email === email)
+  );
+}
+
+function passwordRecoveryRestrictedToAdministrators() {
+  return new AuthApplicationError(
+    'FORBIDDEN',
+    'A recuperação de senha está disponível apenas para administradores.',
   );
 }
