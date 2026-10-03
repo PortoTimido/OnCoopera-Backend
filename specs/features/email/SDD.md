@@ -40,14 +40,20 @@ O usuário deverá informar seu e-mail na opção “Esqueci a senha”.
 O backend deverá:
 
 Normalizar o e-mail.
-Localizar um usuário ativo correspondente.
+Localizar um usuário ativo correspondente que possua um registro na tabela `administrador` pelo mesmo `usuario_id`.
 Invalidar códigos anteriores ainda ativos.
 Gerar um código numérico aleatório de seis dígitos.
 Armazenar somente o hash do código.
 Definir validade de 10 minutos.
 Enviar o código por e-mail.
 
-A resposta da API deve ser genérica, independentemente de o e-mail existir:
+A recuperação de senha é exclusiva para administradores. Para e-mails que não estejam vinculados a um administrador ativo, a API deve responder `403` com a mensagem:
+
+> A recuperação de senha está disponível apenas para administradores.
+
+O frontend deve apresentar essa mensagem em um toast amigável.
+
+Para administradores elegíveis, a resposta de solicitação permanece genérica:
 
 Se o e-mail estiver cadastrado, você receberá as instruções para redefinir sua senha.
 
@@ -230,7 +236,7 @@ POST /auth/password-recovery/request
   "email": "usuario@exemplo.com"
 }
 
-Resposta sempre genérica:
+Para administrador elegível, resposta genérica:
 
 {
   "message": "Se o e-mail estiver cadastrado, você receberá as instruções para redefinir sua senha."
