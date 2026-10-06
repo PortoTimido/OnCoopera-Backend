@@ -29,7 +29,7 @@ export class CreateApoioUseCase {
   constructor(private readonly repo: ApoioRepository) {}
   execute(input: ApoioWriteInput): Promise<PublicApoio> {
     validateHorarios(input.horarios);
-    return this.repo.create(input);
+    return this.repo.create({ ...input, status: 'ATIVO' });
   }
 }
 export class UpdateApoioUseCase {

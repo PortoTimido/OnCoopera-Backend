@@ -156,7 +156,9 @@ export class CreateApoioSwaggerRequestDto {
 
   @ApiPropertyOptional({
     enum: ['RASCUNHO', 'ATIVO', 'DESATIVADO'],
-    example: 'RASCUNHO',
+    default: 'ATIVO',
+    example: 'ATIVO',
+    description: 'Ignorado na criação; todo apoio é criado como ATIVO.',
   })
   status?: string;
 

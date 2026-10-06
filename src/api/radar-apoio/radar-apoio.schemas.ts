@@ -78,7 +78,7 @@ export const createApoioSchema = z
     tipoApoio: tipoApoioSchema,
     telefone: z.string().trim().min(1).max(30),
     descricao: z.string().trim().nullable().optional().default(null),
-    status: statusApoioSchema.default('RASCUNHO'),
+    status: statusApoioSchema.default('ATIVO'),
     endereco: enderecoSchema,
     horarios: z.array(horarioSchema).default([]),
     imagensUrl: z.array(z.string().trim().url()).default([]),
