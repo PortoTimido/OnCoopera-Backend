@@ -32,6 +32,7 @@ export class CreateArtigoUseCase {
     const preview = Artigo.create({
       id: 'preview',
       autorId: input.autorId,
+      autorNome: '',
       titulo: TituloArtigo.create(input.titulo),
       resumo: toResumo(input.resumo),
       conteudo: ConteudoArtigo.create(input.conteudo),

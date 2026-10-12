@@ -25,6 +25,11 @@ import type { ImageStorage } from '../../application/armazenamento-imagem/image-
 interface ArtigoPersistenceRecord {
   id: string;
   autorId: string;
+  autor: {
+    usuario: {
+      nome: string;
+    };
+  };
   titulo: string;
   resumo: string | null;
   conteudo: string;
@@ -43,6 +48,15 @@ interface ArtigoPersistenceRecord {
 }
 
 const artigoInclude = {
+  autor: {
+    select: {
+      usuario: {
+        select: {
+          nome: true,
+        },
+      },
+    },
+  },
   categorias: {
     include: {
       categoria: true,
@@ -380,8 +394,10 @@ export class PrismaArtigoRepository implements ArtigoRepository {
     return Artigo.create({
       id: record.id,
       autorId: record.autorId,
+      autorNome: record.autor.usuario.nome,
       titulo: TituloArtigo.create(record.titulo),
-      resumo: record.resumo === null ? null : ResumoArtigo.create(record.resumo),
+      resumo:
+        record.resumo === null ? null : ResumoArtigo.create(record.resumo),
       conteudo: ConteudoArtigo.create(record.conteudo),
       tempoLeitura: TempoLeitura.create(record.tempoLeituraMinutos),
       imagemUrl: imagemUrl === null ? null : ImagemUrl.create(imagemUrl),

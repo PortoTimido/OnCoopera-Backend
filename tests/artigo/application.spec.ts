@@ -73,15 +73,23 @@ test.group('artigo application', () => {
     const error = await captureError(() => getPublished.execute('artigo-1'));
 
     assert.equal(repository.lastListInput?.onlyPublished, true);
-    assert.equal(listOutput.data.every((artigo) => artigo.status === 'PUBLICADO'), true);
+    assert.equal(
+      listOutput.data.every((artigo) => artigo.status === 'PUBLICADO'),
+      true,
+    );
+    assert.equal(listOutput.data[0]?.autorNome, 'Administração');
     assert.equal(getOutput.id, 'artigo-publicado');
+    assert.equal(getOutput.autorNome, 'Administração');
     assert.instanceOf(error, ArtigoApplicationError);
     assert.equal((error as ArtigoApplicationError).code, 'NOT_FOUND');
   });
 
   test('desativa artigo sem remover registro', async ({ assert }) => {
     const repository = new InMemoryArtigoRepository();
-    const deleteArtigo = new DeleteArtigoUseCase(repository, new NoopImageStorage());
+    const deleteArtigo = new DeleteArtigoUseCase(
+      repository,
+      new NoopImageStorage(),
+    );
 
     await deleteArtigo.execute('artigo-1');
 
@@ -173,7 +181,7 @@ class InMemoryArtigoRepository implements ArtigoRepository {
       titulo: input.titulo,
       conteudo: input.conteudo,
       tempoLeituraMinutos: input.tempoLeituraMinutos,
-      imagemUrl: input.imagemUrl,
+      imagemUrl: null,
       status: input.status,
       categorias: input.categoriaIds.map((id) => this.categorias.get(id)!),
       tags: input.tagIds.map((id) => this.tags.get(id)!),
@@ -231,9 +239,7 @@ class InMemoryArtigoRepository implements ArtigoRepository {
     return [...this.categorias.values()];
   }
 
-  async createCategoria(
-    input: UpsertTaxonomiaInput,
-  ): Promise<PublicTaxonomia> {
+  async createCategoria(input: UpsertTaxonomiaInput): Promise<PublicTaxonomia> {
     return { id: 'categoria-criada', nome: input.nome };
   }
 
@@ -289,6 +295,7 @@ function createArtigo(overrides: Partial<PublicArtigo> = {}): PublicArtigo {
   return {
     id: 'artigo-1',
     autorId: 'admin-1',
+    autorNome: 'Administração',
     titulo: 'Titulo',
     resumo: null,
     conteudo: 'Conteudo',

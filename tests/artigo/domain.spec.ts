@@ -59,15 +59,9 @@ test.group('artigo domain', () => {
 
   test('transiciona entre rascunho, publicado e desativado', ({ assert }) => {
     const artigo = createArtigo();
-    const publicado = artigo.publicar(
-      new Date('2026-01-01T00:00:00.000Z'),
-    );
-    const rascunho = publicado.rascunhar(
-      new Date('2026-01-02T00:00:00.000Z'),
-    );
-    const desativado = rascunho.desativar(
-      new Date('2026-01-03T00:00:00.000Z'),
-    );
+    const publicado = artigo.publicar(new Date('2026-01-01T00:00:00.000Z'));
+    const rascunho = publicado.rascunhar(new Date('2026-01-02T00:00:00.000Z'));
+    const desativado = rascunho.desativar(new Date('2026-01-03T00:00:00.000Z'));
 
     assert.equal(publicado.toPublic().status, 'PUBLICADO');
     assert.equal(
@@ -88,6 +82,7 @@ function createArtigo(
   return Artigo.create({
     id: 'artigo-1',
     autorId: 'admin-1',
+    autorNome: 'Administração',
     titulo: TituloArtigo.create('Titulo'),
     resumo: null,
     conteudo: ConteudoArtigo.create('Conteudo'),

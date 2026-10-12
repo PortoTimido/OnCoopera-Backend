@@ -16,6 +16,7 @@ export interface PublicTaxonomia {
 export interface PublicArtigo {
   id: string;
   autorId: string;
+  autorNome: string;
   titulo: string;
   resumo: string | null;
   conteudo: string;
@@ -32,6 +33,7 @@ export interface PublicArtigo {
 export interface ArtigoProps {
   id: string;
   autorId: string;
+  autorNome: string;
   titulo: TituloArtigo;
   resumo: ResumoArtigo | null;
   conteudo: ConteudoArtigo;
@@ -112,6 +114,7 @@ export class Artigo {
     return {
       id: this.props.id,
       autorId: this.props.autorId,
+      autorNome: this.props.autorNome,
       titulo: this.props.titulo.value,
       resumo: this.props.resumo?.value ?? null,
       conteudo: this.props.conteudo.value,

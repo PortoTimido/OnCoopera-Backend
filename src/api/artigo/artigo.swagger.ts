@@ -39,6 +39,9 @@ export class ArtigoSwaggerDto {
   })
   autorId!: string;
 
+  @ApiProperty({ example: 'Maria da Silva' })
+  autorNome!: string;
+
   @ApiProperty({ example: 'Como se preparar para uma consulta' })
   titulo!: string;
 
