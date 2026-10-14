@@ -143,13 +143,22 @@ export class UpdateRegistroHojeUseCase {
   }
 }
 export function today(now: Date): Date {
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(now);
+  const year = Number(parts.find((part) => part.type === 'year')?.value);
+  const month = Number(parts.find((part) => part.type === 'month')?.value);
+  const day = Number(parts.find((part) => part.type === 'day')?.value);
+  return new Date(Date.UTC(year, month - 1, day));
 }
 function sameDay(value: Date, other: Date): boolean {
   const day = today(other);
   return (
-    value.getFullYear() === day.getFullYear() &&
-    value.getMonth() === day.getMonth() &&
-    value.getDate() === day.getDate()
+    value.getUTCFullYear() === day.getUTCFullYear() &&
+    value.getUTCMonth() === day.getUTCMonth() &&
+    value.getUTCDate() === day.getUTCDate()
   );
 }
