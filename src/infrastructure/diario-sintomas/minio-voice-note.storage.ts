@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'node:crypto';
 import type { Client } from 'minio';
@@ -20,6 +20,7 @@ const FOLDER = 'diario-sintomas/notas-voz';
 
 @Injectable()
 export class MinioVoiceNoteStorage implements VoiceNoteStorage {
+  private readonly logger = new Logger(MinioVoiceNoteStorage.name);
   constructor(
     @Inject(MINIO_CLIENT) private readonly client: Client,
     private readonly config: ConfigService,
@@ -31,18 +32,53 @@ export class MinioVoiceNoteStorage implements VoiceNoteStorage {
       throw new Error('Formato de áudio não suportado.');
     if (file.buffer.byteLength > MAX_AUDIO_SIZE)
       throw new Error('Nota de voz excede o tamanho máximo de 10 MB.');
+    if (!hasExpectedAudioSignature(file.buffer, file.mimetype))
+      throw new Error(
+        'O conteúdo do áudio não corresponde ao formato informado.',
+      );
 
     const objectKey = `${FOLDER}/${randomUUID()}.${extension}`;
     const bucket = this.bucket();
-    await this.ensureBucket(bucket);
-    await this.client.putObject(
-      bucket,
-      objectKey,
-      file.buffer,
-      file.buffer.byteLength,
-      { 'Content-Type': file.mimetype },
+    const requestId = file.requestId ?? 'missing';
+    const startedAt = Date.now();
+    this.logger.log(
+      JSON.stringify({
+        bucket,
+        event: 'voice-note-minio-start',
+        mimetype: file.mimetype,
+        requestId,
+        size: file.buffer.byteLength,
+      }),
     );
-    return objectKey;
+    try {
+      await this.ensureBucket(bucket, requestId);
+      await this.client.putObject(
+        bucket,
+        objectKey,
+        file.buffer,
+        file.buffer.byteLength,
+        { 'Content-Type': file.mimetype },
+      );
+      this.logger.log(
+        JSON.stringify({
+          durationMillis: Date.now() - startedAt,
+          event: 'voice-note-minio-success',
+          objectKey,
+          requestId,
+        }),
+      );
+      return objectKey;
+    } catch (error) {
+      this.logger.error(
+        JSON.stringify({
+          durationMillis: Date.now() - startedAt,
+          error: error instanceof Error ? error.message : 'Erro desconhecido',
+          event: 'voice-note-minio-failure',
+          requestId,
+        }),
+      );
+      throw error;
+    }
   }
 
   async remove(objectKey: string): Promise<void> {
@@ -58,8 +94,22 @@ export class MinioVoiceNoteStorage implements VoiceNoteStorage {
     return Buffer.concat(chunks);
   }
 
-  private async ensureBucket(bucket: string): Promise<void> {
+  private async ensureBucket(bucket: string, requestId: string): Promise<void> {
+    this.logger.debug(
+      JSON.stringify({
+        bucket,
+        event: 'voice-note-minio-bucket-check',
+        requestId,
+      }),
+    );
     if (!(await this.client.bucketExists(bucket))) {
+      this.logger.log(
+        JSON.stringify({
+          bucket,
+          event: 'voice-note-minio-bucket-create',
+          requestId,
+        }),
+      );
       await this.client.makeBucket(bucket);
     }
   }
@@ -67,4 +117,21 @@ export class MinioVoiceNoteStorage implements VoiceNoteStorage {
   private bucket(): string {
     return this.config.getOrThrow<string>('MINIO_BUCKET');
   }
+}
+
+function hasExpectedAudioSignature(buffer: Buffer, mimetype: string): boolean {
+  if (mimetype === 'audio/mpeg')
+    return (
+      buffer.subarray(0, 3).toString('ascii') === 'ID3' ||
+      (buffer.length >= 2 && buffer[0] === 0xff && (buffer[1] & 0xe0) === 0xe0)
+    );
+  if (mimetype === 'audio/mp4' || mimetype === 'audio/x-m4a')
+    return (
+      buffer.length >= 8 && buffer.subarray(4, 8).toString('ascii') === 'ftyp'
+    );
+  return (
+    buffer.length >= 12 &&
+    buffer.subarray(0, 4).toString('ascii') === 'RIFF' &&
+    buffer.subarray(8, 12).toString('ascii') === 'WAVE'
+  );
 }

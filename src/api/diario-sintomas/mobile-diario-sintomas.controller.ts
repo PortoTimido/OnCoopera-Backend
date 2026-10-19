@@ -14,6 +14,7 @@ import {
   UseGuards,
   UseInterceptors,
   BadRequestException,
+  Logger,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import {
@@ -83,6 +84,7 @@ type UploadedVoiceNote = { buffer: Buffer; mimetype: string };
 @UseGuards(JwtAuthGuard, PatientDiarioGuard)
 @Controller('v1/mobile/diario-sintomas')
 export class MobileDiarioSintomasController {
+  private readonly logger = new Logger(MobileDiarioSintomasController.name);
   constructor(
     private readonly listRegistros: ListRegistrosDiariosUseCase,
     private readonly getRegistro: GetRegistroDiarioUseCase,
@@ -158,15 +160,43 @@ export class MobileDiarioSintomasController {
     @Body(new ZodValidationPipe(saveDiarioSchema)) body: SaveDiarioRequestBody,
     @UploadedFile() file?: UploadedVoiceNote,
   ) {
+    const requestId = correlationId(request);
+    const startedAt = Date.now();
+    this.logger.log(
+      JSON.stringify({
+        event: 'voice-note-handler-start',
+        file:
+          file === undefined
+            ? undefined
+            : { mimetype: file.mimetype, size: file.buffer.byteLength },
+        requestId,
+      }),
+    );
     try {
-      return await this.saveHoje.execute(patientId(request), {
+      const result = await this.saveHoje.execute(patientId(request), {
         ...body,
         notaVoz:
           file === undefined
             ? undefined
-            : { buffer: file.buffer, mimetype: file.mimetype },
+            : { buffer: file.buffer, mimetype: file.mimetype, requestId },
       });
+      this.logger.log(
+        JSON.stringify({
+          durationMillis: Date.now() - startedAt,
+          event: 'voice-note-handler-success',
+          requestId,
+        }),
+      );
+      return result;
     } catch (error) {
+      this.logger.error(
+        JSON.stringify({
+          durationMillis: Date.now() - startedAt,
+          error: error instanceof Error ? error.message : 'Erro desconhecido',
+          event: 'voice-note-handler-failure',
+          requestId,
+        }),
+      );
       throw mapDiarioSintomasError(error);
     }
   }
@@ -229,6 +259,13 @@ export class MobileDiarioSintomasController {
       throw mapDiarioSintomasError(error);
     }
   }
+}
+function correlationId(request: AuthenticatedRequest): string {
+  const header = request.headers['x-request-id'];
+  const value = Array.isArray(header) ? header[0] : header;
+  return typeof value === 'string' && /^[a-zA-Z0-9_-]{1,128}$/.test(value)
+    ? value
+    : 'missing';
 }
 function patientId(request: AuthenticatedRequest): string {
   if (request.auth === undefined)

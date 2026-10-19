@@ -39,7 +39,7 @@ test.group('diário de sintomas infrastructure', () => {
     );
 
     const key = await storage.save({
-      buffer: Buffer.from('audio'),
+      buffer: Buffer.from([0xff, 0xfb, 0x90, 0x00]),
       mimetype: 'audio/mpeg',
     });
     assert.match(key, /^diario-sintomas\/notas-voz\/[0-9a-f-]{36}\.mp3$/);
@@ -48,7 +48,10 @@ test.group('diário de sintomas infrastructure', () => {
       calls[1],
       /^put:oncoopera-images:diario-sintomas\/notas-voz\/.+:audio\/mpeg$/,
     );
-    assert.deepEqual(await storage.read(key), Buffer.from('audio'));
+    assert.deepEqual(
+      await storage.read(key),
+      Buffer.from([0xff, 0xfb, 0x90, 0x00]),
+    );
 
     await storage.remove(key);
     const error = await capture(() => storage.read(key));
@@ -62,6 +65,19 @@ test.group('diário de sintomas infrastructure', () => {
     );
     const error = await capture(() =>
       storage.save({ buffer: Buffer.alloc(1), mimetype: 'audio/ogg' }),
+    );
+    assert.instanceOf(error, Error);
+  });
+
+  test('rejeita conteúdo que não corresponde ao MIME declarado', async ({
+    assert,
+  }) => {
+    const storage = new MinioVoiceNoteStorage(
+      {} as Client,
+      config() as ConfigService,
+    );
+    const error = await capture(() =>
+      storage.save({ buffer: Buffer.alloc(20_000), mimetype: 'audio/mp4' }),
     );
     assert.instanceOf(error, Error);
   });
