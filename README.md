@@ -183,6 +183,21 @@ O build é gerado pelo NestJS no diretório `dist/`.
 
 ## Banco de dados
 
+Para iniciar PostgreSQL com PostGIS e MinIO localmente, copie `.env.example` para `.env` se ainda não existir e execute:
+
+```bash
+docker compose up -d --wait
+npx prisma generate
+npx prisma migrate deploy
+npm run db:seed
+```
+
+O usuário precisa ter acesso ao Docker para subir os serviços. O backend executado na máquina usa PostgreSQL em `localhost:5432` (banco `oncoopera`, usuário `postgres`, senha `1234`) e MinIO em `localhost:9000`. O console do MinIO fica em `http://localhost:9001`, com usuário `minio` e senha `12341234`; a senha possui oito caracteres para atender ao mínimo exigido pelo MinIO. As credenciais são para desenvolvimento local. Configure os segredos JWT no `.env` antes de iniciar a API.
+
+O Compose usa `postgis/postgis:18-3.6` e o fork comunitário `pgsty/minio:RELEASE.2026-08-04T00-00-00Z`. O PostgreSQL 18 monta o volume `postgres18_data` em `/var/lib/postgresql`; esse volume separado preserva qualquer volume anterior do PostgreSQL 17, sem tentar reutilizá-lo diretamente.
+
+Os dados ficam em volumes persistentes. Use `docker compose stop` para parar os serviços e `docker compose up -d --wait` para iniciá-los novamente.
+
 Este repositório possui responsabilidade direta sobre o modelo de dados e acesso ao banco por meio do Prisma.
 
 | Item | Configuração identificada |
