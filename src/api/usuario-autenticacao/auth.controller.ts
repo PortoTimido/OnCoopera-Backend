@@ -50,8 +50,11 @@ import { LogoutSessionUseCase } from '../../application/usuario-autenticacao/use
 import { RefreshSessionUseCase } from '../../application/usuario-autenticacao/use-cases/refresh-session.use-case.js';
 import { UpdateOwnProfileUseCase } from '../../application/usuario-autenticacao/use-cases/update-own-profile.use-case.js';
 import {
+  RequestPacientePasswordRecoveryUseCase,
   RequestPasswordRecoveryUseCase,
+  ResetPacientePasswordWithTokenUseCase,
   ResetPasswordWithTokenUseCase,
+  VerifyPacientePasswordRecoveryCodeUseCase,
   VerifyPasswordRecoveryCodeUseCase,
 } from '../../application/usuario-autenticacao/use-cases/password-recovery.use-cases.js';
 import { ZodValidationPipe } from '../common/zod-validation.pipe.js';
@@ -105,6 +108,9 @@ export class AuthController {
   private readonly requestPasswordRecovery: RequestPasswordRecoveryUseCase;
   private readonly verifyPasswordRecovery: VerifyPasswordRecoveryCodeUseCase;
   private readonly resetPasswordWithToken: ResetPasswordWithTokenUseCase;
+  private readonly requestPacientePasswordRecovery: RequestPacientePasswordRecoveryUseCase;
+  private readonly verifyPacientePasswordRecovery: VerifyPacientePasswordRecoveryCodeUseCase;
+  private readonly resetPacientePasswordWithToken: ResetPacientePasswordWithTokenUseCase;
   private readonly uploadUsuarioImagem: UploadUsuarioImagemUseCase;
   private readonly deleteUsuarioImagem: DeleteUsuarioImagemUseCase;
   private readonly config: AuthConfig;
@@ -121,6 +127,9 @@ export class AuthController {
     requestPasswordRecovery: RequestPasswordRecoveryUseCase,
     verifyPasswordRecovery: VerifyPasswordRecoveryCodeUseCase,
     resetPasswordWithToken: ResetPasswordWithTokenUseCase,
+    requestPacientePasswordRecovery: RequestPacientePasswordRecoveryUseCase,
+    verifyPacientePasswordRecovery: VerifyPacientePasswordRecoveryCodeUseCase,
+    resetPacientePasswordWithToken: ResetPacientePasswordWithTokenUseCase,
     uploadUsuarioImagem: UploadUsuarioImagemUseCase,
     deleteUsuarioImagem: DeleteUsuarioImagemUseCase,
   ) {
@@ -134,6 +143,9 @@ export class AuthController {
     this.requestPasswordRecovery = requestPasswordRecovery;
     this.verifyPasswordRecovery = verifyPasswordRecovery;
     this.resetPasswordWithToken = resetPasswordWithToken;
+    this.requestPacientePasswordRecovery = requestPacientePasswordRecovery;
+    this.verifyPacientePasswordRecovery = verifyPacientePasswordRecovery;
+    this.resetPacientePasswordWithToken = resetPacientePasswordWithToken;
     this.uploadUsuarioImagem = uploadUsuarioImagem;
     this.deleteUsuarioImagem = deleteUsuarioImagem;
     this.config = config;
@@ -247,6 +259,78 @@ export class AuthController {
   ): Promise<void> {
     try {
       await this.resetPasswordWithToken.execute({
+        resetToken: body.resetToken,
+        newPassword: body.newPassword,
+      });
+    } catch (error) {
+      throw mapAuthError(error);
+    }
+  }
+
+  @Post('password-recovery/patient/request')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Solicitar recuperação de senha para paciente' })
+  @ApiBody({ type: PasswordRecoveryRequestSwaggerDto })
+  @ApiForbiddenResponse({
+    description: 'Recuperação de senha disponível apenas para pacientes.',
+    type: ErrorSwaggerResponseDto,
+  })
+  async requestPacienteRecovery(
+    @Req() request: AuthenticatedRequest,
+    @Body(new ZodValidationPipe(passwordRecoveryRequestSchema))
+    body: PasswordRecoveryRequestBody,
+  ) {
+    try {
+      await this.requestPacientePasswordRecovery.execute({
+        email: body.email,
+        ip: request.ip || request.socket.remoteAddress || 'unknown',
+      });
+    } catch (error) {
+      throw mapAuthError(error);
+    }
+    return {
+      message:
+        'Se o e-mail estiver cadastrado, você receberá as instruções para redefinir sua senha.',
+    };
+  }
+
+  @Post('password-recovery/patient/verify')
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'Validar código de recuperação de senha do paciente',
+  })
+  @ApiBody({ type: PasswordRecoveryVerifySwaggerDto })
+  @ApiForbiddenResponse({
+    description: 'Recuperação de senha disponível apenas para pacientes.',
+    type: ErrorSwaggerResponseDto,
+  })
+  async verifyPacienteRecovery(
+    @Body(new ZodValidationPipe(passwordRecoveryVerifySchema))
+    body: PasswordRecoveryVerifyBody,
+  ) {
+    try {
+      return await this.verifyPacientePasswordRecovery.execute(body);
+    } catch (error) {
+      throw mapAuthError(error);
+    }
+  }
+
+  @Post('password-recovery/patient/reset')
+  @HttpCode(204)
+  @ApiOperation({
+    summary: 'Redefinir senha de paciente com token de recuperação',
+  })
+  @ApiBody({ type: PasswordRecoveryResetSwaggerDto })
+  @ApiForbiddenResponse({
+    description: 'Recuperação de senha disponível apenas para pacientes.',
+    type: ErrorSwaggerResponseDto,
+  })
+  async resetPacienteRecovery(
+    @Body(new ZodValidationPipe(passwordRecoveryResetSchema))
+    body: PasswordRecoveryResetBody,
+  ): Promise<void> {
+    try {
+      await this.resetPacientePasswordWithToken.execute({
         resetToken: body.resetToken,
         newPassword: body.newPassword,
       });

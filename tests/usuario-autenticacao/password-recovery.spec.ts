@@ -8,12 +8,14 @@ import type {
   PasswordRecoveryRecord,
   PasswordRecoveryRepository,
 } from '../../src/application/usuario-autenticacao/ports/password-recovery.repository.js';
-import type { SecretGenerator } from '../../src/application/usuario-autenticacao/ports/secret-generator.js';
 import type { TokenHasher } from '../../src/application/usuario-autenticacao/ports/token-hasher.js';
 import type { UsuarioRepository } from '../../src/application/usuario-autenticacao/ports/usuario.repository.js';
 import {
+  RequestPacientePasswordRecoveryUseCase,
   RequestPasswordRecoveryUseCase,
+  ResetPacientePasswordWithTokenUseCase,
   ResetPasswordWithTokenUseCase,
+  VerifyPacientePasswordRecoveryCodeUseCase,
   VerifyPasswordRecoveryCodeUseCase,
 } from '../../src/application/usuario-autenticacao/use-cases/password-recovery.use-cases.js';
 import { Usuario } from '../../src/domain/usuario-autenticacao/entities/usuario.entity.js';
@@ -101,9 +103,93 @@ test.group('recuperação de senha exclusiva para administradores', () => {
   });
 });
 
+test.group('recuperação de senha exclusiva para pacientes', () => {
+  test('cria recuperação e envia e-mail para paciente ativo', async ({
+    assert,
+  }) => {
+    const fixture = createFixture({ tipo: 'PACIENTE' });
+
+    await fixture.patientRequest.execute({
+      email: 'user@example.com',
+      ip: '127.0.0.1',
+    });
+
+    assert.equal(fixture.recoveries.registeredRequests, 1);
+    assert.equal(fixture.recoveries.createdRecoveries, 1);
+    assert.equal(fixture.sentEmails, 1);
+  });
+
+  test('valida código e emite token para paciente', async ({ assert }) => {
+    const fixture = createFixture({
+      tipo: 'PACIENTE',
+      recovery: validCodeRecovery(),
+    });
+
+    const output = await fixture.patientVerify.execute({
+      email: 'user@example.com',
+      code: '123456',
+    });
+
+    assert.equal(output.resetToken, 'reset-token');
+    assert.equal(fixture.recoveries.validatedRecoveries, 1);
+  });
+
+  test('redefine senha de paciente, consome token e revoga sessões', async ({
+    assert,
+  }) => {
+    const fixture = createFixture({
+      tipo: 'PACIENTE',
+      recovery: validRecovery(),
+    });
+
+    await fixture.patientReset.execute({
+      resetToken: 'a'.repeat(32),
+      newPassword: 'SenhaNova!123',
+    });
+
+    assert.equal(fixture.passwordUpdates, 1);
+    assert.equal(fixture.recoveries.consumedRecoveries, 1);
+    assert.equal(fixture.revokedSessions, 1);
+  });
+
+  test('não permite fluxo de paciente para administrador', async ({
+    assert,
+  }) => {
+    const fixture = createFixture({
+      tipo: 'ADMINISTRADOR',
+      recovery: validRecovery(),
+    });
+
+    const requestError = await captureError(() =>
+      fixture.patientRequest.execute({
+        email: 'user@example.com',
+        ip: '127.0.0.1',
+      }),
+    );
+    const verifyError = await captureError(() =>
+      fixture.patientVerify.execute({
+        email: 'user@example.com',
+        code: '123456',
+      }),
+    );
+    const resetError = await captureError(() =>
+      fixture.patientReset.execute({
+        resetToken: 'a'.repeat(32),
+        newPassword: 'SenhaNova!123',
+      }),
+    );
+
+    assertRestricted(requestError, assert, 'pacientes');
+    assertRestricted(verifyError, assert, 'pacientes');
+    assertRestricted(resetError, assert, 'pacientes');
+    assert.equal(fixture.recoveries.createdRecoveries, 0);
+    assert.equal(fixture.passwordUpdates, 0);
+  });
+});
+
 function createFixture(options?: {
   recovery?: PasswordRecoveryRecord;
-  tipo?: 'USUARIO' | 'ADMINISTRADOR';
+  tipo?: 'USUARIO' | 'PACIENTE' | 'ADMINISTRADOR';
 }) {
   const usuario = createUsuario(options?.tipo ?? 'USUARIO');
   const recoveries = new InMemoryPasswordRecoveryRepository(options?.recovery);
@@ -163,10 +249,31 @@ function createFixture(options?: {
       usuarios,
       recoveries,
       tokens,
-      { generate: () => 'reset-token' } as SecretGenerator,
+      { generate: () => 'reset-token' },
       config,
     ),
     reset: new ResetPasswordWithTokenUseCase(
+      recoveries,
+      tokens,
+      passwords,
+      usuarios,
+      sessions,
+    ),
+    patientRequest: new RequestPacientePasswordRecoveryUseCase(
+      usuarios,
+      recoveries,
+      tokens,
+      email,
+      config,
+    ),
+    patientVerify: new VerifyPacientePasswordRecoveryCodeUseCase(
+      usuarios,
+      recoveries,
+      tokens,
+      { generate: () => 'reset-token' },
+      config,
+    ),
+    patientReset: new ResetPacientePasswordWithTokenUseCase(
       recoveries,
       tokens,
       passwords,
@@ -186,7 +293,7 @@ function createFixture(options?: {
   };
 }
 
-function createUsuario(tipo: 'USUARIO' | 'ADMINISTRADOR') {
+function createUsuario(tipo: 'USUARIO' | 'PACIENTE' | 'ADMINISTRADOR') {
   return Usuario.create({
     id: 'user-1',
     nome: Nome.create('Usuário Teste'),
@@ -220,12 +327,25 @@ function validRecovery(): PasswordRecoveryRecord {
   };
 }
 
-function assertRestricted(error: unknown, assert: { equal: (actual: unknown, expected: unknown) => void }) {
+function validCodeRecovery(): PasswordRecoveryRecord {
+  return {
+    ...validRecovery(),
+    codigoValidadoEm: null,
+    resetTokenHash: null,
+    resetTokenExpiraEm: null,
+  };
+}
+
+function assertRestricted(
+  error: unknown,
+  assert: { equal: (actual: unknown, expected: unknown) => void },
+  role = 'administradores',
+) {
   assert.equal(error instanceof AuthApplicationError, true);
   assert.equal((error as AuthApplicationError).code, 'FORBIDDEN');
   assert.equal(
     (error as AuthApplicationError).message,
-    'A recuperação de senha está disponível apenas para administradores.',
+    `A recuperação de senha está disponível apenas para ${role}.`,
   );
 }
 
@@ -238,12 +358,11 @@ async function captureError(fn: () => Promise<unknown>): Promise<unknown> {
   }
 }
 
-class InMemoryPasswordRecoveryRepository
-  implements PasswordRecoveryRepository
-{
+class InMemoryPasswordRecoveryRepository implements PasswordRecoveryRepository {
   registeredRequests = 0;
   createdRecoveries = 0;
   findLatestCalls = 0;
+  validatedRecoveries = 0;
   consumedRecoveries = 0;
 
   constructor(private readonly recovery?: PasswordRecoveryRecord) {}
@@ -257,7 +376,9 @@ class InMemoryPasswordRecoveryRepository
     return this.recovery ?? null;
   }
   async incrementAttempts(): Promise<void> {}
-  async setValidated(): Promise<void> {}
+  async setValidated(): Promise<void> {
+    this.validatedRecoveries += 1;
+  }
   async findByResetTokenHash(): Promise<PasswordRecoveryRecord | null> {
     return this.recovery ?? null;
   }

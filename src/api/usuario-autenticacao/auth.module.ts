@@ -65,8 +65,11 @@ import {
   type PasswordRecoveryRepository,
 } from '../../application/usuario-autenticacao/ports/password-recovery.repository.js';
 import {
+  RequestPacientePasswordRecoveryUseCase,
   RequestPasswordRecoveryUseCase,
+  ResetPacientePasswordWithTokenUseCase,
   ResetPasswordWithTokenUseCase,
+  VerifyPacientePasswordRecoveryCodeUseCase,
   VerifyPasswordRecoveryCodeUseCase,
 } from '../../application/usuario-autenticacao/use-cases/password-recovery.use-cases.js';
 import { ResendTemporaryAccessUseCase } from '../../application/usuario-autenticacao/use-cases/resend-temporary-access.use-case.js';
@@ -351,6 +354,78 @@ import { MobilePacientesController } from './mobile-pacientes.controller.js';
         sessions: AuthSessionRepository,
       ) =>
         new ResetPasswordWithTokenUseCase(
+          recoveries,
+          tokens,
+          passwords,
+          usuarios,
+          sessions,
+        ),
+      inject: [
+        PASSWORD_RECOVERY_REPOSITORY,
+        TOKEN_HASHER,
+        PASSWORD_HASHER,
+        USUARIO_REPOSITORY,
+        AUTH_SESSION_REPOSITORY,
+      ],
+    },
+    {
+      provide: RequestPacientePasswordRecoveryUseCase,
+      useFactory: (
+        usuarios: UsuarioRepository,
+        recoveries: PasswordRecoveryRepository,
+        tokens: TokenHasher,
+        email: EmailService,
+        config: AuthConfig,
+      ) =>
+        new RequestPacientePasswordRecoveryUseCase(
+          usuarios,
+          recoveries,
+          tokens,
+          email,
+          config,
+        ),
+      inject: [
+        USUARIO_REPOSITORY,
+        PASSWORD_RECOVERY_REPOSITORY,
+        TOKEN_HASHER,
+        EMAIL_SERVICE,
+        AUTH_CONFIG,
+      ],
+    },
+    {
+      provide: VerifyPacientePasswordRecoveryCodeUseCase,
+      useFactory: (
+        usuarios: UsuarioRepository,
+        recoveries: PasswordRecoveryRepository,
+        tokens: TokenHasher,
+        secrets: SecretGenerator,
+        config: AuthConfig,
+      ) =>
+        new VerifyPacientePasswordRecoveryCodeUseCase(
+          usuarios,
+          recoveries,
+          tokens,
+          secrets,
+          config,
+        ),
+      inject: [
+        USUARIO_REPOSITORY,
+        PASSWORD_RECOVERY_REPOSITORY,
+        TOKEN_HASHER,
+        SECRET_GENERATOR,
+        AUTH_CONFIG,
+      ],
+    },
+    {
+      provide: ResetPacientePasswordWithTokenUseCase,
+      useFactory: (
+        recoveries: PasswordRecoveryRepository,
+        tokens: TokenHasher,
+        passwords: PasswordHasher,
+        usuarios: UsuarioRepository,
+        sessions: AuthSessionRepository,
+      ) =>
+        new ResetPacientePasswordWithTokenUseCase(
           recoveries,
           tokens,
           passwords,
