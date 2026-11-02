@@ -105,6 +105,14 @@ import { SecureTemporaryPasswordGenerator } from '../../infrastructure/usuario-a
 import { createGoogleAuthConfigFromEnv } from '../../infrastructure/usuario-autenticacao/google-auth-config.factory.js';
 import { GoogleIdTokenVerifier } from '../../infrastructure/usuario-autenticacao/google-id-token.verifier.js';
 import { PrismaExternalIdentityRepository } from '../../infrastructure/usuario-autenticacao/prisma-external-identity.repository.js';
+import {
+  TERMOS_USO_ACEITE_REPOSITORY,
+  type TermosUsoAceiteRepository,
+} from '../../application/usuario-autenticacao/ports/termos-uso-aceite.repository.js';
+import { PrismaTermosUsoAceiteRepository } from '../../infrastructure/usuario-autenticacao/prisma-termos-uso-aceite.repository.js';
+import { TermosUsoAceiteService } from '../../application/usuario-autenticacao/services/termos-uso-aceite.service.js';
+import { TermosUsoAceiteGuard } from './termos-uso-aceite.guard.js';
+import { MobileAceitesDocumentosController } from './mobile-aceites-documentos.controller.js';
 import { PermissaoAdministrativaGuard } from './permissao-administrativa.guard.js';
 import { AuthController } from './auth.controller.js';
 import { BackofficeUsuariosController } from './backoffice-usuarios.controller.js';
@@ -117,6 +125,7 @@ import { MobilePacientesController } from './mobile-pacientes.controller.js';
     AuthController,
     BackofficeUsuariosController,
     MobilePacientesController,
+    MobileAceitesDocumentosController,
   ],
   providers: [
     {
@@ -176,6 +185,18 @@ import { MobilePacientesController } from './mobile-pacientes.controller.js';
       inject: [PrismaService],
     },
     {
+      provide: TERMOS_USO_ACEITE_REPOSITORY,
+      useFactory: (prisma: PrismaService) =>
+        new PrismaTermosUsoAceiteRepository(prisma),
+      inject: [PrismaService],
+    },
+    {
+      provide: TermosUsoAceiteService,
+      useFactory: (repository: TermosUsoAceiteRepository) =>
+        new TermosUsoAceiteService(repository),
+      inject: [TERMOS_USO_ACEITE_REPOSITORY],
+    },
+    {
       provide: GOOGLE_IDENTITY_VERIFIER,
       useFactory: (config: GoogleAuthConfig) =>
         new GoogleIdTokenVerifier(config),
@@ -220,8 +241,23 @@ import { MobilePacientesController } from './mobile-pacientes.controller.js';
         usuarios: UsuarioRepository,
         passwordHasher: PasswordHasher,
         issueSession: IssueAuthSessionService,
-      ) => new AuthenticateUserUseCase(usuarios, passwordHasher, issueSession),
-      inject: [USUARIO_REPOSITORY, PASSWORD_HASHER, IssueAuthSessionService],
+        termosUso: TermosUsoAceiteService,
+        accessTokens: AccessTokenService,
+      ) =>
+        new AuthenticateUserUseCase(
+          usuarios,
+          passwordHasher,
+          issueSession,
+          termosUso,
+          accessTokens,
+        ),
+      inject: [
+        USUARIO_REPOSITORY,
+        PASSWORD_HASHER,
+        IssueAuthSessionService,
+        TermosUsoAceiteService,
+        ACCESS_TOKEN_SERVICE,
+      ],
     },
     {
       provide: AuthenticateWithGoogleUseCase,
@@ -230,18 +266,24 @@ import { MobilePacientesController } from './mobile-pacientes.controller.js';
         identities: ExternalIdentityRepository,
         usuarios: UsuarioRepository,
         issueSession: IssueAuthSessionService,
+        termosUso: TermosUsoAceiteService,
+        accessTokens: AccessTokenService,
       ) =>
         new AuthenticateWithGoogleUseCase(
           verifier,
           identities,
           usuarios,
           issueSession,
+          termosUso,
+          accessTokens,
         ),
       inject: [
         GOOGLE_IDENTITY_VERIFIER,
         EXTERNAL_IDENTITY_REPOSITORY,
         USUARIO_REPOSITORY,
         IssueAuthSessionService,
+        TermosUsoAceiteService,
+        ACCESS_TOKEN_SERVICE,
       ],
     },
     {
@@ -567,6 +609,7 @@ import { MobilePacientesController } from './mobile-pacientes.controller.js';
     },
     JwtAuthGuard,
     PermissaoAdministrativaGuard,
+    TermosUsoAceiteGuard,
   ],
   exports: [
     ACCESS_TOKEN_SERVICE,

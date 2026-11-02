@@ -32,6 +32,8 @@ import {
   ApiTags,
   ApiUnauthorizedResponse,
   ApiServiceUnavailableResponse,
+  ApiExtraModels,
+  getSchemaPath,
 } from '@nestjs/swagger';
 import type { Response } from 'express';
 import type { UploadableImage } from '../../application/armazenamento-imagem/image-storage.port.js';
@@ -88,6 +90,7 @@ import {
 } from './auth.schemas.js';
 import {
   AuthSwaggerResponseDto,
+  PendingTermosUsoAceiteSwaggerResponseDto,
   AuthenticatedUserSwaggerDto,
   ChangePasswordSwaggerRequestDto,
   ChangeTemporaryPasswordSwaggerRequestDto,
@@ -101,6 +104,10 @@ import {
 } from './auth.swagger.js';
 
 @ApiTags('Usuário e Autenticação')
+@ApiExtraModels(
+  AuthSwaggerResponseDto,
+  PendingTermosUsoAceiteSwaggerResponseDto,
+)
 @Controller('auth')
 export class AuthController {
   private readonly authenticateUser: AuthenticateUserUseCase;
@@ -176,7 +183,12 @@ export class AuthController {
         schema: { type: 'string' },
       },
     },
-    type: AuthSwaggerResponseDto,
+    schema: {
+      oneOf: [
+        { $ref: getSchemaPath(AuthSwaggerResponseDto) },
+        { $ref: getSchemaPath(PendingTermosUsoAceiteSwaggerResponseDto) },
+      ],
+    },
   })
   @ApiBadRequestResponse({
     description: 'Payload inválido.',
@@ -196,12 +208,7 @@ export class AuthController {
   ) {
     try {
       const output = await this.authenticateUser.execute(body);
-      setAuthCookies(response, output, this.config);
-
-      return {
-        accessToken: output.accessToken,
-        usuario: output.usuario,
-      };
+      return respondToAuthentication(response, output, this.config);
     } catch (error) {
       throw mapAuthError(error);
     }
@@ -224,7 +231,12 @@ export class AuthController {
         schema: { type: 'string' },
       },
     },
-    type: AuthSwaggerResponseDto,
+    schema: {
+      oneOf: [
+        { $ref: getSchemaPath(AuthSwaggerResponseDto) },
+        { $ref: getSchemaPath(PendingTermosUsoAceiteSwaggerResponseDto) },
+      ],
+    },
   })
   @ApiBadRequestResponse({
     description: 'Payload ausente ou inválido.',
@@ -253,12 +265,7 @@ export class AuthController {
   ) {
     try {
       const output = await this.authenticateWithGoogle.execute(body.idToken);
-      setAuthCookies(response, output, this.config);
-
-      return {
-        accessToken: output.accessToken,
-        usuario: output.usuario,
-      };
+      return respondToAuthentication(response, output, this.config);
     } catch (error) {
       throw mapAuthError(error);
     }
@@ -704,6 +711,25 @@ export class AuthController {
       throw mapAuthError(error);
     }
   }
+}
+
+function respondToAuthentication(
+  response: Response,
+  output:
+    | Awaited<ReturnType<AuthenticateUserUseCase['execute']>>
+    | Awaited<ReturnType<AuthenticateWithGoogleUseCase['execute']>>,
+  config: AuthConfig,
+) {
+  if ('aceiteTermosUsoPendente' in output) {
+    return {
+      tokenAceite: output.tokenAceite,
+      aceiteTermosUsoPendente: true,
+      usuario: output.usuario,
+    };
+  }
+
+  setAuthCookies(response, output, config);
+  return { accessToken: output.accessToken, usuario: output.usuario };
 }
 
 function requiredImage(image?: UploadableImage): UploadableImage {

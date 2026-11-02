@@ -229,6 +229,21 @@ export class AuthSwaggerResponseDto {
   usuario!: AuthenticatedUserSwaggerDto;
 }
 
+export class PendingTermosUsoAceiteSwaggerResponseDto {
+  @ApiProperty({
+    description:
+      'JWT temporário, válido somente para consultar e registrar o aceite do Termo de Uso.',
+    example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+  })
+  tokenAceite!: string;
+
+  @ApiProperty({ example: true })
+  aceiteTermosUsoPendente!: true;
+
+  @ApiProperty({ type: AuthenticatedUserSwaggerDto })
+  usuario!: AuthenticatedUserSwaggerDto;
+}
+
 export class ErrorSwaggerResponseDto {
   @ApiProperty({
     description: 'Código HTTP retornado.',

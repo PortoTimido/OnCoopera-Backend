@@ -12,6 +12,8 @@ import {
 import type { UsuarioRepository } from '../../src/application/usuario-autenticacao/ports/usuario.repository.js';
 import type { IssueAuthSessionService } from '../../src/application/usuario-autenticacao/services/issue-auth-session.service.js';
 import { AuthenticateWithGoogleUseCase } from '../../src/application/usuario-autenticacao/use-cases/authenticate-with-google.use-case.js';
+import type { AccessTokenService } from '../../src/application/usuario-autenticacao/ports/access-token.service.js';
+import { TermosUsoAceiteService } from '../../src/application/usuario-autenticacao/services/termos-uso-aceite.service.js';
 import { Usuario } from '../../src/domain/usuario-autenticacao/entities/usuario.entity.js';
 import { DataNascimento } from '../../src/domain/usuario-autenticacao/value-objects/data-nascimento.value-object.js';
 import { Email } from '../../src/domain/usuario-autenticacao/value-objects/email.value-object.js';
@@ -213,6 +215,7 @@ function createGoogleFixture(options?: {
   linkConflict?: boolean;
   usuarios?: Usuario[];
   verificationFailure?: 'INVALID' | 'UNAVAILABLE';
+  termosUsoAceito?: boolean;
 }) {
   const usuarios = new InMemoryUsuarioRepository(
     options?.usuarios ?? [createUsuario()],
@@ -247,6 +250,12 @@ function createGoogleFixture(options?: {
       });
     },
   } as IssueAuthSessionService;
+  const termosUso = {
+    isAceito: () => Promise.resolve(options?.termosUsoAceito ?? true),
+  } as TermosUsoAceiteService;
+  const accessTokens = {
+    sign: () => Promise.resolve('token-aceite'),
+  } as AccessTokenService;
 
   return {
     identities,
@@ -258,6 +267,8 @@ function createGoogleFixture(options?: {
       identities,
       usuarios,
       issueSession,
+      termosUso,
+      accessTokens,
     ),
   };
 }

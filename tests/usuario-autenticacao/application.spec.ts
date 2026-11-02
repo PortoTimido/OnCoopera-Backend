@@ -30,6 +30,7 @@ import { LogoutSessionUseCase } from '../../src/application/usuario-autenticacao
 import { RefreshSessionUseCase } from '../../src/application/usuario-autenticacao/use-cases/refresh-session.use-case.js';
 import { UpdateOwnProfileUseCase } from '../../src/application/usuario-autenticacao/use-cases/update-own-profile.use-case.js';
 import { IssueAuthSessionService } from '../../src/application/usuario-autenticacao/services/issue-auth-session.service.js';
+import { TermosUsoAceiteService } from '../../src/application/usuario-autenticacao/services/termos-uso-aceite.service.js';
 
 const authConfig: AuthConfig = {
   jwtAccessSecret: 'test-access-secret',
@@ -58,6 +59,24 @@ test.group('usuario-autenticacao application', () => {
     assert.equal(fixture.sessions.items.length, 1);
     assert.equal(fixture.usuarios.lastAccessUpdates.length, 1);
     assert.equal('senhaHash' in output.usuario, false);
+  });
+
+  test('paciente sem aceite recebe somente token restrito', async ({
+    assert,
+  }) => {
+    const fixture = createFixture({
+      tipo: 'PACIENTE',
+      termosUsoAceito: false,
+    });
+
+    const output = await fixture.authenticateUseCase().execute({
+      identificador: 'user@example.com',
+      senha: 'SenhaAtual!123',
+    });
+
+    assert.equal('aceiteTermosUsoPendente' in output, true);
+    assert.equal(output.tokenAceite, 'access:user-1:undefined');
+    assert.equal(fixture.sessions.items.length, 0);
   });
 
   test('login inválido e usuário não ativo retornam falha genérica', async ({
@@ -284,6 +303,7 @@ function createFixture(options?: {
   trocaSenhaObrigatoria?: boolean;
   tipo?: 'USUARIO' | 'PACIENTE' | 'ADMINISTRADOR';
   permissoesAdministrativas?: string[];
+  termosUsoAceito?: boolean;
 }) {
   const usuarios = new InMemoryUsuarioRepository([
     createUsuario(options?.status ?? 'ATIVO', {
@@ -302,6 +322,9 @@ function createFixture(options?: {
     'refresh-2',
     'csrf-2',
   ]);
+  const termosUso = {
+    isAceito: () => Promise.resolve(options?.termosUsoAceito ?? true),
+  } as TermosUsoAceiteService;
 
   return {
     usuarios,
@@ -318,6 +341,8 @@ function createFixture(options?: {
           secretGenerator,
           authConfig,
         ),
+        termosUso,
+        accessTokens,
       ),
     refreshUseCase: () =>
       new RefreshSessionUseCase(

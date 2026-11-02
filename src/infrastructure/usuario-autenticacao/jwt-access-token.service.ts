@@ -32,9 +32,15 @@ export class JwtAccessTokenService implements AccessTokenService {
         },
       );
 
-      if (typeof payload.sub !== 'string' || typeof payload.sid !== 'string') {
+      if (typeof payload.sub !== 'string') {
         return null;
       }
+
+      if (payload.scope === 'TERMOS_USO_ACEITE') {
+        return { sub: payload.sub, scope: 'TERMOS_USO_ACEITE' };
+      }
+
+      if (typeof payload.sid !== 'string') return null;
 
       return {
         sub: payload.sub,

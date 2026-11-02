@@ -65,6 +65,10 @@ export class JwtAuthGuard implements CanActivate {
       throw new UnauthorizedException('Usuário não autenticado.');
     }
 
+    if (!('sid' in payload)) {
+      throw new UnauthorizedException('Usuário não autenticado.');
+    }
+
     const session = await this.sessions.findById(payload.sid);
 
     if (

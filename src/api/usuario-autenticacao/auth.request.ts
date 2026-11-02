@@ -7,7 +7,7 @@ import type {
 
 export interface AuthenticatedRequestContext {
   usuarioId: string;
-  sessaoId: string;
+  sessaoId?: string;
   tipo: TipoUsuario;
   permissoesAdministrativas: PermissaoAdministrativaNome[];
 }
