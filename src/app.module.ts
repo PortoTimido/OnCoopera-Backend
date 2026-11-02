@@ -10,6 +10,7 @@ import { DiarioSintomasModule } from './api/diario-sintomas/diario-sintomas.modu
 import { ArmazenamentoImagemModule } from './infrastructure/armazenamento-imagem/armazenamento-imagem.module.js';
 import { DashboardModule } from './api/dashboard/dashboard.module.js';
 import { validateEnvironment } from './app.config.js';
+import { DocumentoLegalModule } from './api/documento-legal/documento-legal.module.js';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { validateEnvironment } from './app.config.js';
     RadarApoioModule,
     DiarioSintomasModule,
     DashboardModule,
+    DocumentoLegalModule,
   ],
   controllers: [AppController],
   providers: [AppService],

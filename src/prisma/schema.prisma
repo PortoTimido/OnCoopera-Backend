@@ -74,6 +74,7 @@ model Usuario {
   sessoes               SessaoAutenticacao[]
   recuperacoesSenha     RecuperacaoSenha[]
   identidadesExternas   IdentidadeExterna[]
+  aceitesDocumentos     AceiteDocumento[]
 
   @@map("usuario")
 }
@@ -88,6 +89,30 @@ model IdentidadeExterna {
   @@id([provedor, subject])
   @@unique([usuarioId, provedor])
   @@map("identidade_externa")
+}
+
+model DocumentoLegal {
+  id           String            @id @default(uuid()) @db.Uuid
+  tipo         String            @unique @db.VarChar(20)
+  versao       String            @db.VarChar(5)
+  conteudo     String            @db.Text
+  atualizadoEm DateTime          @map("atualizado_em")
+  aceites      AceiteDocumento[]
+
+  @@map("documento_legal")
+}
+
+model AceiteDocumento {
+  id          String         @id @default(uuid()) @db.Uuid
+  usuarioId   String         @map("usuario_id") @db.Uuid
+  documentoId String         @map("documento_id") @db.Uuid
+  aceitoEm    DateTime       @map("aceito_em")
+  usuario     Usuario        @relation(fields: [usuarioId], references: [id])
+  documento   DocumentoLegal @relation(fields: [documentoId], references: [id])
+
+  @@index([usuarioId])
+  @@index([documentoId])
+  @@map("aceite_documento")
 }
 
 model RecuperacaoSenha {
