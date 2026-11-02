@@ -112,6 +112,7 @@ model AceiteDocumento {
 
   @@index([usuarioId])
   @@index([documentoId])
+  @@unique([usuarioId, documentoId])
   @@map("aceite_documento")
 }
 
