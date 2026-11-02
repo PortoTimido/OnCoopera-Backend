@@ -3,6 +3,7 @@ import {
   ConflictException,
   ForbiddenException,
   NotFoundException,
+  ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { AuthApplicationError } from '../../application/usuario-autenticacao/errors/auth-application.error.js';
@@ -13,6 +14,7 @@ export function mapAuthError(error: unknown): Error {
     if (
       error.code === 'INVALID_CREDENTIALS' ||
       error.code === 'INVALID_REFRESH_TOKEN' ||
+      error.code === 'INVALID_GOOGLE_TOKEN' ||
       error.code === 'UNAUTHORIZED'
     ) {
       return new UnauthorizedException(error.message);
@@ -35,6 +37,28 @@ export function mapAuthError(error: unknown): Error {
 
     if (error.code === 'FORBIDDEN') {
       return new ForbiddenException(error.message);
+    }
+
+    if (error.code === 'GOOGLE_ACCOUNT_FORBIDDEN') {
+      return new ForbiddenException(error.message);
+    }
+
+    if (error.code === 'GOOGLE_ACCOUNT_NOT_REGISTERED') {
+      return new ConflictException({
+        error: 'GOOGLE_ACCOUNT_NOT_REGISTERED',
+        message: error.message,
+      });
+    }
+
+    if (error.code === 'GOOGLE_IDENTITY_CONFLICT') {
+      return new ConflictException({
+        error: 'GOOGLE_IDENTITY_CONFLICT',
+        message: error.message,
+      });
+    }
+
+    if (error.code === 'GOOGLE_SERVICE_UNAVAILABLE') {
+      return new ServiceUnavailableException(error.message);
     }
 
     if (error.code === 'NOT_FOUND') {

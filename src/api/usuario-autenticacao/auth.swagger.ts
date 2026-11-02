@@ -15,6 +15,16 @@ export class LoginSwaggerRequestDto {
   senha!: string;
 }
 
+export class GoogleLoginSwaggerRequestDto {
+  @ApiProperty({
+    description:
+      'ID Token emitido pelo Google para o Web Client ID autorizado.',
+    example: 'eyJhbGciOiJSUzI1NiIsImtpZCI6Ii4uLiJ9...',
+    writeOnly: true,
+  })
+  idToken!: string;
+}
+
 export class ChangePasswordSwaggerRequestDto {
   @ApiProperty({
     description: 'Senha atual do usuário autenticado.',

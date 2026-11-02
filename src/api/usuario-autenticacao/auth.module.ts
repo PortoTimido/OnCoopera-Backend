@@ -36,7 +36,21 @@ import {
   USUARIO_REPOSITORY,
   type UsuarioRepository,
 } from '../../application/usuario-autenticacao/ports/usuario.repository.js';
+import {
+  EXTERNAL_IDENTITY_REPOSITORY,
+  type ExternalIdentityRepository,
+} from '../../application/usuario-autenticacao/ports/external-identity.repository.js';
+import {
+  GOOGLE_AUTH_CONFIG,
+  type GoogleAuthConfig,
+} from '../../application/usuario-autenticacao/ports/google-auth-config.js';
+import {
+  GOOGLE_IDENTITY_VERIFIER,
+  type GoogleIdentityVerifier,
+} from '../../application/usuario-autenticacao/ports/google-identity-verifier.js';
+import { IssueAuthSessionService } from '../../application/usuario-autenticacao/services/issue-auth-session.service.js';
 import { AuthenticateUserUseCase } from '../../application/usuario-autenticacao/use-cases/authenticate-user.use-case.js';
+import { AuthenticateWithGoogleUseCase } from '../../application/usuario-autenticacao/use-cases/authenticate-with-google.use-case.js';
 import { ChangeTemporaryPasswordUseCase } from '../../application/usuario-autenticacao/use-cases/change-temporary-password.use-case.js';
 import { ChangePasswordUseCase } from '../../application/usuario-autenticacao/use-cases/change-password.use-case.js';
 import { CreateAdministradorUseCase } from '../../application/usuario-autenticacao/use-cases/create-administrador.use-case.js';
@@ -88,6 +102,9 @@ import { NodeSecretGenerator } from '../../infrastructure/usuario-autenticacao/n
 import { PrismaAuthSessionRepository } from '../../infrastructure/usuario-autenticacao/prisma-auth-session.repository.js';
 import { PrismaUsuarioRepository } from '../../infrastructure/usuario-autenticacao/prisma-usuario.repository.js';
 import { SecureTemporaryPasswordGenerator } from '../../infrastructure/usuario-autenticacao/secure-temporary-password-generator.js';
+import { createGoogleAuthConfigFromEnv } from '../../infrastructure/usuario-autenticacao/google-auth-config.factory.js';
+import { GoogleIdTokenVerifier } from '../../infrastructure/usuario-autenticacao/google-id-token.verifier.js';
+import { PrismaExternalIdentityRepository } from '../../infrastructure/usuario-autenticacao/prisma-external-identity.repository.js';
 import { PermissaoAdministrativaGuard } from './permissao-administrativa.guard.js';
 import { AuthController } from './auth.controller.js';
 import { BackofficeUsuariosController } from './backoffice-usuarios.controller.js';
@@ -105,6 +122,10 @@ import { MobilePacientesController } from './mobile-pacientes.controller.js';
     {
       provide: AUTH_CONFIG,
       useFactory: () => createAuthConfigFromEnv(process.env),
+    },
+    {
+      provide: GOOGLE_AUTH_CONFIG,
+      useFactory: () => createGoogleAuthConfigFromEnv(process.env),
     },
     {
       provide: PASSWORD_HASHER,
@@ -149,26 +170,36 @@ import { MobilePacientesController } from './mobile-pacientes.controller.js';
       inject: [PrismaService],
     },
     {
+      provide: EXTERNAL_IDENTITY_REPOSITORY,
+      useFactory: (prisma: PrismaService) =>
+        new PrismaExternalIdentityRepository(prisma),
+      inject: [PrismaService],
+    },
+    {
+      provide: GOOGLE_IDENTITY_VERIFIER,
+      useFactory: (config: GoogleAuthConfig) =>
+        new GoogleIdTokenVerifier(config),
+      inject: [GOOGLE_AUTH_CONFIG],
+    },
+    {
       provide: PASSWORD_RECOVERY_REPOSITORY,
       useFactory: (prisma: PrismaService) =>
         new PrismaPasswordRecoveryRepository(prisma),
       inject: [PrismaService],
     },
     {
-      provide: AuthenticateUserUseCase,
+      provide: IssueAuthSessionService,
       useFactory: (
         usuarios: UsuarioRepository,
         sessions: AuthSessionRepository,
-        passwordHasher: PasswordHasher,
         accessTokens: AccessTokenService,
         tokenHasher: TokenHasher,
         secretGenerator: SecretGenerator,
         config: AuthConfig,
       ) =>
-        new AuthenticateUserUseCase(
+        new IssueAuthSessionService(
           usuarios,
           sessions,
-          passwordHasher,
           accessTokens,
           tokenHasher,
           secretGenerator,
@@ -177,11 +208,40 @@ import { MobilePacientesController } from './mobile-pacientes.controller.js';
       inject: [
         USUARIO_REPOSITORY,
         AUTH_SESSION_REPOSITORY,
-        PASSWORD_HASHER,
         ACCESS_TOKEN_SERVICE,
         TOKEN_HASHER,
         SECRET_GENERATOR,
         AUTH_CONFIG,
+      ],
+    },
+    {
+      provide: AuthenticateUserUseCase,
+      useFactory: (
+        usuarios: UsuarioRepository,
+        passwordHasher: PasswordHasher,
+        issueSession: IssueAuthSessionService,
+      ) => new AuthenticateUserUseCase(usuarios, passwordHasher, issueSession),
+      inject: [USUARIO_REPOSITORY, PASSWORD_HASHER, IssueAuthSessionService],
+    },
+    {
+      provide: AuthenticateWithGoogleUseCase,
+      useFactory: (
+        verifier: GoogleIdentityVerifier,
+        identities: ExternalIdentityRepository,
+        usuarios: UsuarioRepository,
+        issueSession: IssueAuthSessionService,
+      ) =>
+        new AuthenticateWithGoogleUseCase(
+          verifier,
+          identities,
+          usuarios,
+          issueSession,
+        ),
+      inject: [
+        GOOGLE_IDENTITY_VERIFIER,
+        EXTERNAL_IDENTITY_REPOSITORY,
+        USUARIO_REPOSITORY,
+        IssueAuthSessionService,
       ],
     },
     {

@@ -31,6 +31,7 @@ import {
   ApiOperation,
   ApiTags,
   ApiUnauthorizedResponse,
+  ApiServiceUnavailableResponse,
 } from '@nestjs/swagger';
 import type { Response } from 'express';
 import type { UploadableImage } from '../../application/armazenamento-imagem/image-storage.port.js';
@@ -43,6 +44,7 @@ import {
   type AuthConfig,
 } from '../../application/usuario-autenticacao/ports/auth-config.js';
 import { AuthenticateUserUseCase } from '../../application/usuario-autenticacao/use-cases/authenticate-user.use-case.js';
+import { AuthenticateWithGoogleUseCase } from '../../application/usuario-autenticacao/use-cases/authenticate-with-google.use-case.js';
 import { ChangePasswordUseCase } from '../../application/usuario-autenticacao/use-cases/change-password.use-case.js';
 import { ChangeTemporaryPasswordUseCase } from '../../application/usuario-autenticacao/use-cases/change-temporary-password.use-case.js';
 import { GetAuthenticatedUserUseCase } from '../../application/usuario-autenticacao/use-cases/get-authenticated-user.use-case.js';
@@ -70,6 +72,7 @@ import {
   changePasswordSchema,
   changeTemporaryPasswordSchema,
   loginSchema,
+  googleLoginSchema,
   updateOwnProfileSchema,
   passwordRecoveryRequestSchema,
   passwordRecoveryVerifySchema,
@@ -77,6 +80,7 @@ import {
   type ChangePasswordRequestBody,
   type ChangeTemporaryPasswordRequestBody,
   type LoginRequestBody,
+  type GoogleLoginRequestBody,
   type UpdateOwnProfileRequestBody,
   type PasswordRecoveryRequestBody,
   type PasswordRecoveryVerifyBody,
@@ -89,6 +93,7 @@ import {
   ChangeTemporaryPasswordSwaggerRequestDto,
   ErrorSwaggerResponseDto,
   LoginSwaggerRequestDto,
+  GoogleLoginSwaggerRequestDto,
   UpdateOwnProfileSwaggerRequestDto,
   PasswordRecoveryRequestSwaggerDto,
   PasswordRecoveryVerifySwaggerDto,
@@ -114,6 +119,7 @@ export class AuthController {
   private readonly uploadUsuarioImagem: UploadUsuarioImagemUseCase;
   private readonly deleteUsuarioImagem: DeleteUsuarioImagemUseCase;
   private readonly config: AuthConfig;
+  private readonly authenticateWithGoogle: AuthenticateWithGoogleUseCase;
 
   constructor(
     authenticateUser: AuthenticateUserUseCase,
@@ -132,6 +138,7 @@ export class AuthController {
     resetPacientePasswordWithToken: ResetPacientePasswordWithTokenUseCase,
     uploadUsuarioImagem: UploadUsuarioImagemUseCase,
     deleteUsuarioImagem: DeleteUsuarioImagemUseCase,
+    authenticateWithGoogle: AuthenticateWithGoogleUseCase,
   ) {
     this.authenticateUser = authenticateUser;
     this.refreshSession = refreshSession;
@@ -149,6 +156,7 @@ export class AuthController {
     this.uploadUsuarioImagem = uploadUsuarioImagem;
     this.deleteUsuarioImagem = deleteUsuarioImagem;
     this.config = config;
+    this.authenticateWithGoogle = authenticateWithGoogle;
   }
 
   @Post('login')
@@ -188,6 +196,63 @@ export class AuthController {
   ) {
     try {
       const output = await this.authenticateUser.execute(body);
+      setAuthCookies(response, output, this.config);
+
+      return {
+        accessToken: output.accessToken,
+        usuario: output.usuario,
+      };
+    } catch (error) {
+      throw mapAuthError(error);
+    }
+  }
+
+  @Post('google')
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'Autenticar paciente com Google',
+    description:
+      'Valida o ID Token Google, vincula com segurança um paciente já cadastrado e cria a sessão revogável padrão do OnCoopera.',
+  })
+  @ApiBody({ type: GoogleLoginSwaggerRequestDto })
+  @ApiOkResponse({
+    description: 'Paciente autenticado com sucesso.',
+    headers: {
+      'Set-Cookie': {
+        description:
+          'Define refresh token HttpOnly e CSRF token legível no path `/api/auth`.',
+        schema: { type: 'string' },
+      },
+    },
+    type: AuthSwaggerResponseDto,
+  })
+  @ApiBadRequestResponse({
+    description: 'Payload ausente ou inválido.',
+    type: ErrorSwaggerResponseDto,
+  })
+  @ApiUnauthorizedResponse({
+    description: 'ID Token inválido ou não autorizado.',
+    type: ErrorSwaggerResponseDto,
+  })
+  @ApiForbiddenResponse({
+    description: 'Conta inativa, bloqueada ou que não pertence a paciente.',
+    type: ErrorSwaggerResponseDto,
+  })
+  @ApiConflictResponse({
+    description: 'Paciente não cadastrado ou identidade já vinculada.',
+    type: ErrorSwaggerResponseDto,
+  })
+  @ApiServiceUnavailableResponse({
+    description: 'Validação Google temporariamente indisponível.',
+    type: ErrorSwaggerResponseDto,
+  })
+  async google(
+    @Body(new ZodValidationPipe(googleLoginSchema))
+    body: GoogleLoginRequestBody,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    try {
+      const output = await this.authenticateWithGoogle.execute(body.idToken);
       setAuthCookies(response, output, this.config);
 
       return {

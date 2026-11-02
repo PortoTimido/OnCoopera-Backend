@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
+  ServiceUnavailableException,
   UnauthorizedException,
   type ExecutionContext,
 } from '@nestjs/common';
@@ -17,7 +18,10 @@ import {
   refreshCookieOptions,
 } from '../../src/api/usuario-autenticacao/auth-cookie.service.js';
 import type { AuthenticatedRequest } from '../../src/api/usuario-autenticacao/auth.request.js';
-import { loginSchema } from '../../src/api/usuario-autenticacao/auth.schemas.js';
+import {
+  googleLoginSchema,
+  loginSchema,
+} from '../../src/api/usuario-autenticacao/auth.schemas.js';
 import {
   JwtAuthGuard,
   extractBearerToken,
@@ -38,6 +42,7 @@ import { GetAuthenticatedUserUseCase } from '../../src/application/usuario-auten
 import { LogoutSessionUseCase } from '../../src/application/usuario-autenticacao/use-cases/logout-session.use-case.js';
 import { RefreshSessionUseCase } from '../../src/application/usuario-autenticacao/use-cases/refresh-session.use-case.js';
 import { UpdateOwnProfileUseCase } from '../../src/application/usuario-autenticacao/use-cases/update-own-profile.use-case.js';
+import { AuthenticateWithGoogleUseCase } from '../../src/application/usuario-autenticacao/use-cases/authenticate-with-google.use-case.js';
 
 const authConfig: AuthConfig = {
   jwtAccessSecret: 'test-access-secret',
@@ -63,6 +68,19 @@ test.group('usuario-autenticacao API contracts', () => {
 
     assert.equal(validResult.success, true);
     assert.equal(invalidResult.success, false);
+  });
+
+  test('Google schema exige somente ID Token não vazio', ({ assert }) => {
+    assert.equal(
+      googleLoginSchema.safeParse({ idToken: ' google-id-token ' }).success,
+      true,
+    );
+    assert.equal(googleLoginSchema.safeParse({}).success, false);
+    assert.equal(
+      googleLoginSchema.safeParse({ idToken: 'token', clientId: 'indevido' })
+        .success,
+      false,
+    );
   });
 
   test('ZodValidationPipe transforma payload inválido em 400', async ({
@@ -122,6 +140,24 @@ test.group('usuario-autenticacao API contracts', () => {
     assert.equal(response.hasCookie(CSRF_TOKEN_COOKIE), true);
     assert.equal(response.cookieHasHttpOnly(REFRESH_TOKEN_COOKIE), true);
     assert.equal(response.cookieHasHttpOnly(CSRF_TOKEN_COOKIE), false);
+  });
+
+  test('login Google retorna o contrato atual e seta os mesmos cookies', async ({
+    assert,
+  }) => {
+    const response = new FakeResponse();
+    const controller = createController();
+
+    const output = await controller.google(
+      { idToken: 'google-id-token' },
+      response.asResponse(),
+    );
+
+    assert.equal(output.accessToken, 'google-access-token');
+    assert.equal(output.usuario.tipo, 'PACIENTE');
+    assert.equal(response.hasCookie(REFRESH_TOKEN_COOKIE), true);
+    assert.equal(response.hasCookie(CSRF_TOKEN_COOKIE), true);
+    assert.equal(JSON.stringify(output).includes('google-id-token'), false);
   });
 
   test('rotas protegidas retornam 401 sem Bearer token', async ({ assert }) => {
@@ -201,6 +237,29 @@ test.group('usuario-autenticacao API contracts', () => {
         message: 'Troca de senha obrigatória.',
       },
     );
+  });
+
+  test('erros Google preservam códigos públicos e indisponibilidade', ({
+    assert,
+  }) => {
+    const notRegistered = mapAuthError(
+      new AuthApplicationError(
+        'GOOGLE_ACCOUNT_NOT_REGISTERED',
+        'Nenhum cadastro foi encontrado para esta conta Google.',
+      ),
+    ) as ConflictException;
+    const unavailable = mapAuthError(
+      new AuthApplicationError(
+        'GOOGLE_SERVICE_UNAVAILABLE',
+        'Autenticação com Google temporariamente indisponível.',
+      ),
+    );
+
+    assert.deepEqual(notRegistered.getResponse(), {
+      error: 'GOOGLE_ACCOUNT_NOT_REGISTERED',
+      message: 'Nenhum cadastro foi encontrado para esta conta Google.',
+    });
+    assert.equal(unavailable instanceof ServiceUnavailableException, true);
   });
 
   test('guard administrativo autoriza por permissão específica', ({
@@ -308,6 +367,7 @@ test.group('usuario-autenticacao API contracts', () => {
 function createController(options?: {
   refreshError?: Error;
   logoutError?: Error;
+  googleError?: Error;
 }): AuthController {
   return new AuthController(
     {
@@ -363,6 +423,40 @@ function createController(options?: {
       execute: () => Promise.resolve({}),
     } as UpdateOwnProfileUseCase,
     authConfig,
+    undefined as never,
+    undefined as never,
+    undefined as never,
+    undefined as never,
+    undefined as never,
+    undefined as never,
+    undefined as never,
+    undefined as never,
+    {
+      execute: () =>
+        options?.googleError !== undefined
+          ? Promise.reject(options.googleError)
+          : Promise.resolve({
+              accessToken: 'google-access-token',
+              refreshToken: 'google-refresh-token',
+              csrfToken: 'google-csrf-token',
+              refreshExpiresAt: new Date('2026-01-08T00:00:00.000Z'),
+              usuario: {
+                id: 'patient-1',
+                nome: 'Paciente Teste',
+                email: 'patient@example.com',
+                login: 'paciente.teste',
+                telefone: '11999998888',
+                dataNascimento: new Date('1990-05-20T00:00:00.000Z'),
+                status: 'ATIVO',
+                tipo: 'PACIENTE',
+                permissoesAdministrativas: [],
+                perfisAdministrativos: [],
+                trocaSenhaObrigatoria: false,
+                ultimoAcesso: new Date('2026-01-01T00:00:00.000Z'),
+                imagemUrl: null,
+              },
+            }),
+    } as AuthenticateWithGoogleUseCase,
   );
 }
 

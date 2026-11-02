@@ -8,6 +8,12 @@ export const loginSchema = z
   })
   .strict();
 
+export const googleLoginSchema = z
+  .object({
+    idToken: z.string().trim().min(1).max(10_000),
+  })
+  .strict();
+
 export const changePasswordSchema = z
   .object({
     senhaAtual: z.string().min(1).max(200),
@@ -57,6 +63,7 @@ export const updateOwnProfileSchema = z
   });
 
 export type LoginRequestBody = z.infer<typeof loginSchema>;
+export type GoogleLoginRequestBody = z.infer<typeof googleLoginSchema>;
 export type ChangePasswordRequestBody = z.infer<typeof changePasswordSchema>;
 export type ChangeTemporaryPasswordRequestBody = z.infer<
   typeof changeTemporaryPasswordSchema

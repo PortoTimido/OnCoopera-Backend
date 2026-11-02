@@ -19,6 +19,12 @@ enum StatusEmailEnvio {
   FALHOU
 }
 
+enum ProvedorIdentidadeExterna {
+  GOOGLE
+
+  @@map("provedor_identidade_externa")
+}
+
 enum TipoApoio {
   ONG
   CLINICA
@@ -67,8 +73,21 @@ model Usuario {
   administrador         Administrador?
   sessoes               SessaoAutenticacao[]
   recuperacoesSenha     RecuperacaoSenha[]
+  identidadesExternas   IdentidadeExterna[]
 
   @@map("usuario")
+}
+
+model IdentidadeExterna {
+  provedor    ProvedorIdentidadeExterna
+  subject     String
+  usuarioId   String                    @map("usuario_id") @db.Uuid
+  vinculadaEm DateTime                  @default(now()) @map("vinculada_em")
+  usuario     Usuario                   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@id([provedor, subject])
+  @@unique([usuarioId, provedor])
+  @@map("identidade_externa")
 }
 
 model RecuperacaoSenha {

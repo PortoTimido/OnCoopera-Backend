@@ -29,6 +29,7 @@ import { ChangeTemporaryPasswordUseCase } from '../../src/application/usuario-au
 import { LogoutSessionUseCase } from '../../src/application/usuario-autenticacao/use-cases/logout-session.use-case.js';
 import { RefreshSessionUseCase } from '../../src/application/usuario-autenticacao/use-cases/refresh-session.use-case.js';
 import { UpdateOwnProfileUseCase } from '../../src/application/usuario-autenticacao/use-cases/update-own-profile.use-case.js';
+import { IssueAuthSessionService } from '../../src/application/usuario-autenticacao/services/issue-auth-session.service.js';
 
 const authConfig: AuthConfig = {
   jwtAccessSecret: 'test-access-secret',
@@ -229,9 +230,7 @@ test.group('usuario-autenticacao application', () => {
     assert.equal(updated.nome, 'Novo Nome');
     assert.equal(updated.email, 'novo.email@example.com');
     assert.equal(updated.telefone, '11988887777');
-    assert.deepEqual(updated.permissoesAdministrativas, [
-      'GESTAO_CONTEUDOS',
-    ]);
+    assert.deepEqual(updated.permissoesAdministrativas, ['GESTAO_CONTEUDOS']);
     assert.equal(updated.login, 'usuario.teste');
 
     const inactiveFixture = createFixture({ status: 'INATIVO' });
@@ -242,10 +241,7 @@ test.group('usuario-autenticacao application', () => {
     );
 
     assert.equal(inactiveError instanceof AuthApplicationError, true);
-    assert.equal(
-      (inactiveError as AuthApplicationError).code,
-      'UNAUTHORIZED',
-    );
+    assert.equal((inactiveError as AuthApplicationError).code, 'UNAUTHORIZED');
   });
 
   test('login normal bloqueia troca obrigatória e troca senha temporária', async ({
@@ -313,12 +309,15 @@ function createFixture(options?: {
     authenticateUseCase: () =>
       new AuthenticateUserUseCase(
         usuarios,
-        sessions,
         passwordHasher,
-        accessTokens,
-        tokenHasher,
-        secretGenerator,
-        authConfig,
+        new IssueAuthSessionService(
+          usuarios,
+          sessions,
+          accessTokens,
+          tokenHasher,
+          secretGenerator,
+          authConfig,
+        ),
       ),
     refreshUseCase: () =>
       new RefreshSessionUseCase(

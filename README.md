@@ -110,7 +110,8 @@ Principais responsabilidades:
 | PostgreSQL | Banco configurado pelo Prisma |
 | PostGIS | Necessário para campos geoespaciais definidos no schema |
 
-Não há versão de Node.js fixada no repositório.
+O projeto exige Node.js 22 ou superior; o ambiente containerizado de
+desenvolvimento utiliza Node.js 24.
 
 ## Instalação
 
@@ -140,8 +141,13 @@ Variáveis utilizadas:
 | `ACCESS_TOKEN_TTL_SECONDS` | Tempo de vida do access token, em segundos |
 | `REFRESH_TOKEN_TTL_DAYS` | Tempo de vida do refresh token, em dias |
 | `AUTH_COOKIE_SECURE` | Define se o cookie de autenticação deve exigir conexão segura |
+| `GOOGLE_WEB_CLIENT_ID` | Web Client ID OAuth 2.0 aceito como audiência dos ID Tokens Google |
 
 Os valores do `.env.example` são apenas exemplos para ambiente local. Segredos reais não devem ser versionados.
+
+O login Google não utiliza Client Secret. O valor de `GOOGLE_WEB_CLIENT_ID`
+deve ser o mesmo Web Client ID configurado pelo aplicativo mobile ao solicitar
+o ID Token.
 
 ## Executando o projeto
 
