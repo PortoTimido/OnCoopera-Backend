@@ -17,7 +17,7 @@ RUN npx prisma generate
 RUN npm run build
 
 
-FROM node:22-slim AS runtime
+FROM node:24-slim AS runtime
 
 RUN apt-get update -y && apt-get install -y --no-install-recommends openssl procps \
     && rm -rf /var/lib/apt/lists/*
