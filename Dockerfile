@@ -1,7 +1,7 @@
 # Production image for the OnCoopera NestJS API.
 # Dockerfile.dev remains the local-development image (bind mount + nest start --watch).
 
-FROM node:22-slim AS builder
+FROM node:24-slim AS builder
 
 RUN apt-get update -y && apt-get install -y --no-install-recommends openssl \
     && rm -rf /var/lib/apt/lists/*
