@@ -68,6 +68,7 @@ export interface UpdateAdministradorRepositoryInput {
 export interface CreatePacienteRepositoryInput extends UsuarioBaseData {
   senhaHash: string;
   endereco: Omit<EnderecoData, 'id'>;
+  termosUsoAceito: true;
 }
 
 export interface UpdatePacienteRepositoryInput {

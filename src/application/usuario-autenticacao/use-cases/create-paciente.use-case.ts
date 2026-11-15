@@ -15,6 +15,7 @@ import {
 export interface CreatePacienteInput extends UsuarioBaseData {
   senha: string;
   endereco: Omit<EnderecoData, 'id'>;
+  termosUsoAceito: true;
 }
 
 export class CreatePacienteUseCase {
@@ -45,6 +46,7 @@ export class CreatePacienteUseCase {
       ...normalizeUsuarioBaseData(input),
       senhaHash,
       endereco: normalizeEnderecoData(input.endereco),
+      termosUsoAceito: input.termosUsoAceito,
     });
   }
 }

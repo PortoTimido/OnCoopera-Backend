@@ -116,12 +116,14 @@ test.group('usuario-autenticacao user CRUD application', () => {
       dataNascimento: new Date('1990-05-20T00:00:00.000Z'),
       senha: 'SenhaPaciente!123',
       endereco: createEnderecoInput(),
+      termosUsoAceito: true,
     });
 
     assert.equal(
       usuarios.createdPatients[0]?.senhaHash,
       'hash-password:SenhaPaciente!123',
     );
+    assert.equal(usuarios.createdPatients[0]?.termosUsoAceito, true);
     assert.equal(output.usuario.tipo, 'PACIENTE');
     assert.deepEqual(output.usuario.permissoesAdministrativas, []);
     assert.equal(output.endereco?.cep, '01310930');

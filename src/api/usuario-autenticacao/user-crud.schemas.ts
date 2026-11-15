@@ -92,6 +92,7 @@ export const createPacienteSchema = usuarioBaseSchema
   .extend({
     senha: z.string().min(1).max(200),
     endereco: enderecoSchema,
+    termosUsoAceito: z.literal(true),
   })
   .strict();
 

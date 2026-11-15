@@ -336,6 +336,21 @@ export class PrismaUsuarioRepository
           },
         });
 
+        const termosUso = await tx.documentoLegal.findUnique({
+          where: { tipo: 'TERMOS_USO' },
+          select: { id: true },
+        });
+
+        if (termosUso !== null && input.termosUsoAceito) {
+          await tx.aceiteDocumento.create({
+            data: {
+              usuarioId: usuario.id,
+              documentoId: termosUso.id,
+              aceitoEm: new Date(),
+            },
+          });
+        }
+
         return tx.usuario.findUniqueOrThrow({
           where: { id: usuario.id },
           include: usuarioInclude,

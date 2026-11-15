@@ -195,6 +195,14 @@ export class CreatePacienteSwaggerRequestDto {
 
   @ApiProperty({ type: EnderecoRequestSwaggerDto })
   endereco!: EnderecoRequestSwaggerDto;
+
+  @ApiProperty({
+    description:
+      'Confirma o aceite dos Termos de Uso vigentes. O cadastro é permitido somente com o valor true.',
+    enum: [true],
+    example: true,
+  })
+  termosUsoAceito!: true;
 }
 
 export class UpdatePacienteSwaggerRequestDto {

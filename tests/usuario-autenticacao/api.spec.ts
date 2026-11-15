@@ -340,6 +340,7 @@ test.group('usuario-autenticacao API contracts', () => {
       telefone: '11999998888',
       dataNascimento: '1990-05-20',
       senha: 'SenhaPaciente!123',
+      termosUsoAceito: true,
       endereco: {
         cep: '01310-930',
         logradouro: 'Avenida Paulista',
@@ -353,6 +354,71 @@ test.group('usuario-autenticacao API contracts', () => {
     });
 
     assert.equal(pacientePayload.success, true);
+    assert.equal(
+      createPacienteSchema.safeParse({
+        nome: 'Paciente Teste',
+        email: 'paciente@example.com',
+        login: 'paciente.teste',
+        telefone: '11999998888',
+        dataNascimento: '1990-05-20',
+        senha: 'SenhaPaciente!123',
+        endereco: {
+          cep: '01310-930',
+          logradouro: 'Avenida Paulista',
+          numero: '1000',
+          bairro: 'Bela Vista',
+          cidade: 'São Paulo',
+          estado: 'SP',
+          latitude: -23.561684,
+          longitude: -46.655981,
+        },
+      }).success,
+      false,
+    );
+    assert.equal(
+      createPacienteSchema.safeParse({
+        nome: 'Paciente Teste',
+        email: 'paciente@example.com',
+        login: 'paciente.teste',
+        telefone: '11999998888',
+        dataNascimento: '1990-05-20',
+        senha: 'SenhaPaciente!123',
+        termosUsoAceito: 'true',
+        endereco: {
+          cep: '01310-930',
+          logradouro: 'Avenida Paulista',
+          numero: '1000',
+          bairro: 'Bela Vista',
+          cidade: 'São Paulo',
+          estado: 'SP',
+          latitude: -23.561684,
+          longitude: -46.655981,
+        },
+      }).success,
+      false,
+    );
+    assert.equal(
+      createPacienteSchema.safeParse({
+        nome: 'Paciente Teste',
+        email: 'paciente@example.com',
+        login: 'paciente.teste',
+        telefone: '11999998888',
+        dataNascimento: '1990-05-20',
+        senha: 'SenhaPaciente!123',
+        termosUsoAceito: false,
+        endereco: {
+          cep: '01310-930',
+          logradouro: 'Avenida Paulista',
+          numero: '1000',
+          bairro: 'Bela Vista',
+          cidade: 'São Paulo',
+          estado: 'SP',
+          latitude: -23.561684,
+          longitude: -46.655981,
+        },
+      }).success,
+      false,
+    );
     assert.equal(
       Reflect.getMetadata('path', BackofficeUsuariosController),
       'backoffice',
